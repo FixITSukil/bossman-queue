@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Barber Dashboard</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #fafaf9; min-height: 100vh; padding: 1rem; }
+  .page { max-width: 420px; margin: 0 auto; display: flex; flex-direction: column; gap: 1rem; }
+  .card { background: #fff; border-radius: 1rem; box-shadow: 0 2px 12px rgba(0,0,0,0.08); padding: 1.25rem; }
+  .header-row { display: flex; align-items: center; justify-content: space-between; }
+  h1 { font-size: 1.4rem; font-weight: 700; color: #1c1917; }
+  .sub { color: #78716c; font-size: 0.85rem; margin-top: 0.15rem; }
+  .toggle { padding: 0.35rem 0.9rem; border-radius: 999px; border: none; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+  .toggle.active { background: #dcfce7; color: #166534; }
+  .toggle.inactive { background: #f5f5f4; color: #78716c; }
+  .stats { display: flex; gap: 0.75rem; margin-top: 1rem; }
+  .stat { flex: 1; background: #fef3c7; border-radius: 0.75rem; padding: 0.75rem; text-align: center; }
+  .stat.gray { background: #f5f5f4; }
+  .stat-val { font-size: 1.6rem; font-weight: 800; color: #d97706; }
+  .stat.gray .stat-val { color: #44403c; }
+  .stat-label { font-size: 0.7rem; color: #78716c; margin-top: 0.1rem; }
+  .serving-card { background: #f59e0b; border-radius: 1rem; padding: 1rem 1.25rem; }
+  .serving-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(255,255,255,0.75); margin-bottom: 0.4rem; }
+  .serving-row { display: flex; align-items: center; justify-content: space-between; }
+  .serving-name { font-size: 1.3rem; font-weight: 700; color: #fff; }
+  .serving-phone { font-size: 0.85rem; color: rgba(255,255,255,0.8); margin-top: 0.1rem; }
+  .icon-btns { display: flex; gap: 0.5rem; }
+  .icon-btn { background: #fff; border: none; border-radius: 0.6rem; padding: 0.5rem; cursor: pointer; font-size: 1.1rem; line-height: 1; }
+  /* Duration modal */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; padding: 1.5rem; z-index: 100; }
+  .modal { background: #fff; border-radius: 1rem; padding: 1.5rem; width: 100%; max-width: 300px; }
+  .modal h3 { font-size: 1.1rem; font-weight: 700; color: #1c1917; margin-bottom: 0.35rem; }
+  .modal p { font-size: 0.85rem; color: #78716c; margin-bottom: 1rem; }
+  .duration-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.25rem; }
+  .duration-row button { width: 2.2rem; height: 2.2rem; border-radius: 50%; border: 1.5px solid #e7e5e4; background: #fff; font-size: 1.1rem; font-weight: 700; cursor: pointer; color: #44403c; }
+  .duration-row input { flex: 1; text-align: center; border: 1.5px solid #d6d3d1; border-radius: 0.6rem; padding: 0.5rem; font-size: 1.2rem; font-weight: 700; color: #1c1917; }
+  .duration-row span { font-size: 0.85rem; color: #78716c; white-space: nowrap; }
+  .modal-btns { display: flex; gap: 0.5rem; }
+  .modal-btns button { flex: 1; padding: 0.7rem; border-radius: 0.6rem; border: none; font-size: 0.95rem; font-weight: 600; cursor: pointer; }
+  .btn-cancel { background: #f5f5f4; color: #78716c; }
+  .btn-confirm { background: #f59e0b; color: #fff; }
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; }
+  .section-title { font-weight: 600; color: #44403c; font-size: 0.95rem; }
+  .call-btn { display: flex; align-items: center; gap: 0.4rem; background: #f59e0b; color: #fff; border: none; border-radius: 0.6rem; padding: 0.45rem 0.9rem; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+  .call-btn:hover { background: #d97706; }
+  .queue-item { background: #fff; border-radius: 0.75rem; box-shadow: 0 1px 6px rgba(0,0,0,0.06); padding: 0.85rem 1rem; display: flex; align-items: center; justify-content: space-between; }
+  .queue-left { display: flex; align-items: center; gap: 0.75rem; }
+  .queue-num { width: 2rem; height: 2rem; border-radius: 50%; background: #f5f5f4; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; color: #44403c; flex-shrink: 0; }
+  .queue-name { font-weight: 600; color: #1c1917; font-size: 0.95rem; }
+  .queue-phone { font-size: 0.8rem; color: #78716c; margin-top: 0.1rem; }
+  .queue-actions { display: flex; gap: 0.25rem; }
+  .q-btn { background: none; border: none; cursor: pointer; padding: 0.3rem; font-size: 1.1rem; opacity: 0.7; }
+  .q-btn:hover { opacity: 1; }
+  .empty { text-align: center; color: #a8a29e; padding: 2.5rem 1rem; font-size: 0.95rem; }
+  .queue-stack { display: flex; flex-direction: column; gap: 0.5rem; }
+  .refresh-note { text-align: center; font-size: 0.7rem; color: #d6d3d1; padding-top: 0.5rem; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="card">
+    <div class="header-row">
+      <div>
+        <h1 id="barber-name">✂️ Loading...</h1>
+        <p class="sub">Barber Dashboard</p>
+      </div>
+      <button class="toggle active" id="toggle-btn" onclick="toggleActive()">Active</button>
+    </div>
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-val" id="stat-waiting">0</div>
+        <div class="stat-label">👥 waiting</div>
+      </div>
+      <div class="stat gray">
+        <div class="stat-val" id="stat-wait">~0m</div>
+        <div class="stat-label">⏱ total wait</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="serving-section" class="hidden serving-card">
+    <div class="serving-label">Currently Serving</div>
+    <div class="serving-row">
+      <div>
+        <div class="serving-name" id="serving-name">-</div>
+        <div class="serving-phone" id="serving-phone">-</div>
+      </div>
+      <div class="icon-btns">
+        <button class="icon-btn" onclick="markStatus(servingId, 'done')">✅</button>
+        <button class="icon-btn" onclick="markStatus(servingId, 'no_show')">❌</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="duration-modal">
+    <div class="modal">
+      <h3>How long is this cut?</h3>
+      <p>Set the time so the queue shows accurate wait times.</p>
+      <div class="duration-row">
+        <button onclick="adjustDuration(-5)">−</button>
+        <input type="number" id="duration-input" value="20" min="5" max="120">
+        <span>minutes</span>
+        <button onclick="adjustDuration(+5)">+</button>
+      </div>
+      <div class="modal-btns">
+        <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+        <button class="btn-confirm" onclick="confirmCallNext()">Call & Start</button>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="section-header">
+      <span class="section-title">Queue</span>
+      <button class="call-btn hidden" id="call-btn" onclick="openCallModal()">🔔 Call Next</button>
+    </div>
+    <div class="queue-stack" id="queue-list">
+      <div class="empty">Loading queue...</div>
+    </div>
+    <p class="refresh-note">Auto-refreshes every 10 seconds</p>
+  </div>
+
+</div>
+
+<script>
+// ← Paste your Apps Script URL here
+var API = "https://script.google.com/macros/s/AKfycbzbQwHdDmrGWLWMI6yST7-zCb69k1F-znD93NMsq6sTs0gSlygR51c9ykPPZysiygWH/exec";
+
+var PIN    = new URLSearchParams(window.location.search).get("pin") || "";
+var barber = null;
+var servingId = null;
+
+function call(params) {
+  var qs = Object.keys(params).map(function(k) { return k + "=" + encodeURIComponent(params[k]); }).join("&");
+  return fetch(API + "?" + qs).then(function(r) { return r.json(); });
+}
+
+function init() {
+  call({ action: "getBarberByPin", pin: PIN }).then(function(b) {
+    if (!b || b.error) {
+      document.querySelector(".page").innerHTML = "<div class='card'><p style='color:#ef4444'>Invalid PIN. Check your link.</p></div>";
+      return;
+    }
+    barber = b;
+    document.getElementById("barber-name").textContent = "✂️ " + b.name;
+    updateToggleBtn();
+    loadQueue();
+    setInterval(loadQueue, 10000);
+  }).catch(function() {
+    document.querySelector(".page").innerHTML = "<div class='card'><p style='color:#ef4444'>Failed to load. Please refresh.</p></div>";
+  });
+}
+
+function loadQueue() {
+  if (!barber) return;
+  call({ action: "getQueue", barberId: barber.id }).then(renderQueue).catch(function() {});
+}
+
+function renderQueue(queue) {
+  queue = queue || [];
+  var waiting = queue.filter(function(q) { return q.status === "waiting"; });
+  var serving  = queue.find(function(q)  { return q.status === "called"; });
+
+  var currentDuration = (serving && serving.durationMinutes) ? serving.durationMinutes : (barber ? barber.avgMinutes : 20);
+  var totalWait = currentDuration + Math.max(0, waiting.length - 1) * (barber ? barber.avgMinutes : 20);
+  document.getElementById("stat-waiting").textContent = waiting.length;
+  document.getElementById("stat-wait").textContent = "~" + (serving ? totalWait : waiting.length * (barber ? barber.avgMinutes : 20)) + "m";
+
+  var servingSection = document.getElementById("serving-section");
+  if (serving) {
+    servingId = serving.id;
+    document.getElementById("serving-name").textContent  = serving.customerName;
+    document.getElementById("serving-phone").textContent = serving.phone;
+    servingSection.classList.remove("hidden");
+  } else {
+    servingId = null;
+    servingSection.classList.add("hidden");
+  }
+
+  var callBtn = document.getElementById("call-btn");
+  if (!serving && waiting.length > 0) callBtn.classList.remove("hidden");
+  else callBtn.classList.add("hidden");
+
+  var list = document.getElementById("queue-list");
+  if (waiting.length === 0 && !serving) {
+    list.innerHTML = "<div class='empty'>Queue is empty — enjoy the break! ☕</div>";
+    return;
+  }
+  list.innerHTML = "";
+  waiting.forEach(function(entry, i) {
+    var waitMins = currentDuration + i * (barber ? barber.avgMinutes : 20);
+    var item = document.createElement("div");
+    item.className = "queue-item";
+    item.innerHTML =
+      '<div class="queue-left">' +
+        '<div class="queue-num">' + (i + 1) + '</div>' +
+        '<div><div class="queue-name">' + entry.customerName + '</div>' +
+        '<div class="queue-phone">~' + waitMins + ' min wait · ' + entry.phone + '</div></div>' +
+      '</div>' +
+      '<div class="queue-actions">' +
+        '<button class="q-btn" onclick="markStatus(\'' + entry.id + '\',\'done\')">✅</button>' +
+        '<button class="q-btn" onclick="markStatus(\'' + entry.id + '\',\'no_show\')">❌</button>' +
+      '</div>';
+    list.appendChild(item);
+  });
+}
+
+function openCallModal() {
+  document.getElementById("duration-input").value = 20;
+  document.getElementById("duration-modal").classList.remove("hidden");
+}
+
+function closeModal() {
+  document.getElementById("duration-modal").classList.add("hidden");
+}
+
+function adjustDuration(delta) {
+  var inp = document.getElementById("duration-input");
+  inp.value = Math.max(5, Math.min(120, (parseInt(inp.value) || 20) + delta));
+}
+
+function confirmCallNext() {
+  if (!barber) return;
+  var mins = parseInt(document.getElementById("duration-input").value) || 20;
+  closeModal();
+  document.getElementById("call-btn").textContent = "Calling...";
+  call({ action: "callNext", barberId: barber.id, barberName: barber.name, durationMinutes: mins })
+    .then(loadQueue).catch(loadQueue);
+}
+
+function markStatus(id, status) {
+  if (!id || !barber) return;
+  call({ action: "updateStatus", id: id, status: status, barberName: barber.name })
+    .then(loadQueue).catch(function() {});
+}
+
+function toggleActive() {
+  if (!barber) return;
+  call({ action: "toggleActive", barberId: barber.id }).then(function(res) {
+    barber.isActive = res.isActive;
+    updateToggleBtn();
+  }).catch(function() {});
+}
+
+function updateToggleBtn() {
+  var btn = document.getElementById("toggle-btn");
+  btn.textContent = barber.isActive ? "Active" : "Inactive";
+  btn.className = "toggle " + (barber.isActive ? "active" : "inactive");
+}
+
+init();
+</script>
+</body>
+</html>

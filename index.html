@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bossman Gentleman's Club Barbershop</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #fafaf9; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1.5rem; }
+  h1 { font-size: 1.75rem; font-weight: 700; color: #1c1917; text-align: center; }
+  .subtitle { color: #78716c; margin-top: 0.25rem; text-align: center; font-size: 0.95rem; }
+  .subtitle2 { color: #a8a29e; margin-top: 0.15rem; text-align: center; font-size: 0.8rem; }
+  .card { background: #fff; border-radius: 1rem; box-shadow: 0 2px 12px rgba(0,0,0,0.08); padding: 1.25rem; width: 100%; max-width: 380px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; border: none; text-align: left; transition: box-shadow 0.15s; }
+  .card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.12); }
+  .card-name { font-size: 1.1rem; font-weight: 600; color: #1c1917; }
+  .card-meta { color: #78716c; font-size: 0.85rem; margin-top: 0.25rem; }
+  .arrow { color: #f59e0b; font-size: 1.5rem; }
+  .stack { display: flex; flex-direction: column; gap: 0.75rem; width: 100%; max-width: 380px; margin-top: 1.5rem; }
+  .form-box { background: #fff; border-radius: 1rem; box-shadow: 0 2px 12px rgba(0,0,0,0.08); padding: 1.5rem; width: 100%; max-width: 380px; }
+  .form-box h2 { font-size: 1.2rem; font-weight: 700; color: #1c1917; }
+  .form-box .meta { color: #78716c; font-size: 0.85rem; margin-top: 0.25rem; margin-bottom: 1.25rem; }
+  label { display: block; font-size: 0.875rem; font-weight: 500; color: #44403c; margin-bottom: 0.35rem; }
+  input { width: 100%; border: 1.5px solid #d6d3d1; border-radius: 0.6rem; padding: 0.6rem 0.75rem; font-size: 1rem; color: #1c1917; outline: none; margin-bottom: 1rem; }
+  input:focus { border-color: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,0.15); }
+  .hint { font-size: 0.75rem; color: #a8a29e; margin-top: -0.75rem; margin-bottom: 1rem; }
+  .btn { width: 100%; background: #f59e0b; color: #fff; border: none; border-radius: 0.75rem; padding: 0.8rem; font-size: 1rem; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+  .btn:hover { background: #d97706; }
+  .btn:disabled { opacity: 0.5; cursor: default; }
+  .btn-back { background: none; border: none; color: #f59e0b; font-size: 0.9rem; font-weight: 500; cursor: pointer; margin-bottom: 1rem; padding: 0; }
+  .done-box { background: #fff; border-radius: 1rem; box-shadow: 0 2px 12px rgba(0,0,0,0.08); padding: 2rem 1.5rem; width: 100%; max-width: 380px; text-align: center; }
+  .done-icon { font-size: 3.5rem; }
+  .done-box h2 { font-size: 1.4rem; font-weight: 700; color: #1c1917; margin-top: 0.75rem; }
+  .badge { background: #fef3c7; border-radius: 0.75rem; padding: 1rem; margin: 1rem 0; }
+  .badge .pos { font-size: 2.5rem; font-weight: 800; color: #d97706; }
+  .badge .pos-label { color: #92400e; font-size: 0.8rem; }
+  .stats { display: flex; justify-content: space-around; margin: 1rem 0; }
+  .stat-val { font-size: 1.25rem; font-weight: 700; color: #1c1917; }
+  .stat-label { font-size: 0.75rem; color: #78716c; }
+  .note { font-size: 0.75rem; color: #a8a29e; margin-top: 0.5rem; }
+  .error { color: #ef4444; font-size: 0.875rem; margin-bottom: 0.75rem; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<!-- Step 1: Pick barber -->
+<div id="step-pick">
+  <h1>✂️ Bossman</h1>
+  <p class="subtitle">Gentleman's Club Barbershop</p>
+  <p class="subtitle2">Choose your barber to join the queue</p>
+  <div class="stack" id="barber-list">
+    <p style="color:#a8a29e;text-align:center;padding:2rem 0">Loading barbers...</p>
+  </div>
+</div>
+
+<!-- Step 2: Enter details -->
+<div id="step-form" class="hidden">
+  <div class="form-box">
+    <button class="btn-back" onclick="showPick()">← Back</button>
+    <h2 id="form-title">Join queue</h2>
+    <p class="meta" id="form-meta"></p>
+    <p class="error hidden" id="form-error"></p>
+    <label>Your Name</label>
+    <input type="text" id="inp-name" placeholder="e.g. Ahmad">
+    <label>WhatsApp Number</label>
+    <input type="tel" id="inp-phone" placeholder="e.g. 60123456789">
+    <p class="hint">Include country code, no spaces or dashes</p>
+    <button class="btn" id="btn-join" onclick="joinQueue()">Join Queue</button>
+  </div>
+</div>
+
+<!-- Step 3: Confirmation -->
+<div id="step-done" class="hidden">
+  <div class="done-box">
+    <div class="done-icon">✅</div>
+    <h2>You're in the queue!</h2>
+    <p style="color:#78716c;margin-top:0.5rem;">Barber: <strong id="conf-barber"></strong></p>
+    <div class="badge">
+      <div class="pos" id="conf-pos">#1</div>
+      <div class="pos-label">your position</div>
+    </div>
+    <div class="stats">
+      <div><div class="stat-val" id="conf-ahead">0</div><div class="stat-label">ahead of you</div></div>
+      <div><div class="stat-val" id="conf-wait">~0m</div><div class="stat-label">est. wait</div></div>
+    </div>
+    <p class="note">We'll WhatsApp you when it's almost your turn.</p>
+  </div>
+</div>
+
+<script>
+// ← Paste your Apps Script URL here
+var API = "https://script.google.com/macros/s/AKfycbzbQwHdDmrGWLWMI6yST7-zCb69k1F-znD93NMsq6sTs0gSlygR51c9ykPPZysiygWH/exec";
+
+var barbers = [];
+var selectedBarber = null;
+var queueCounts = {};
+
+function call(params) {
+  var qs = Object.keys(params).map(function(k) { return k + "=" + encodeURIComponent(params[k]); }).join("&");
+  return fetch(API + "?" + qs).then(function(r) { return r.json(); });
+}
+
+function showPick() {
+  document.getElementById("step-pick").classList.remove("hidden");
+  document.getElementById("step-form").classList.add("hidden");
+  document.getElementById("step-done").classList.add("hidden");
+}
+
+function showForm(barber) {
+  selectedBarber = barber;
+  var count = queueCounts[barber.id] || 0;
+  document.getElementById("form-title").textContent = "Join " + barber.name + "'s queue";
+  document.getElementById("form-meta").textContent = count + " waiting · ~" + (count * barber.avgMinutes) + " min";
+  document.getElementById("step-pick").classList.add("hidden");
+  document.getElementById("step-form").classList.remove("hidden");
+  document.getElementById("form-error").classList.add("hidden");
+  document.getElementById("inp-name").value = "";
+  document.getElementById("inp-phone").value = "";
+}
+
+function loadBarbers() {
+  call({ action: "getBarbers" }).then(function(data) {
+    barbers = data || [];
+    var done = 0;
+    if (barbers.length === 0) { renderBarbers(); return; }
+    barbers.forEach(function(b) {
+      call({ action: "getQueue", barberId: b.id }).then(function(q) {
+        queueCounts[b.id] = (q || []).length;
+        done++;
+        if (done === barbers.length) renderBarbers();
+      }).catch(function() { done++; if (done === barbers.length) renderBarbers(); });
+    });
+  }).catch(function() {
+    document.getElementById("barber-list").innerHTML = "<p style='color:#ef4444;text-align:center'>Failed to load. Please refresh.</p>";
+  });
+}
+
+function renderBarbers() {
+  var list = document.getElementById("barber-list");
+  list.innerHTML = "";
+  if (barbers.length === 0) { list.innerHTML = "<p style='color:#a8a29e;text-align:center'>No barbers available.</p>"; return; }
+  barbers.forEach(function(b) {
+    var count = queueCounts[b.id] || 0;
+    var btn = document.createElement("button");
+    btn.className = "card";
+    btn.innerHTML = '<div><div class="card-name">' + b.name + '</div><div class="card-meta">👥 ' + count + ' waiting &nbsp;·&nbsp; ⏱ ~' + (count * b.avgMinutes) + ' min</div></div><div class="arrow">›</div>';
+    btn.onclick = function() { showForm(b); };
+    list.appendChild(btn);
+  });
+}
+
+function joinQueue() {
+  var name  = document.getElementById("inp-name").value.trim();
+  var phone = document.getElementById("inp-phone").value.trim();
+  var errEl = document.getElementById("form-error");
+  if (!name || !phone) { errEl.textContent = "Please enter your name and phone number."; errEl.classList.remove("hidden"); return; }
+  errEl.classList.add("hidden");
+  var btn = document.getElementById("btn-join");
+  btn.disabled = true; btn.textContent = "Joining...";
+  call({ action: "joinQueue", barberId: selectedBarber.id, barberName: selectedBarber.name, customerName: name, phone: phone })
+    .then(function(res) {
+      btn.disabled = false; btn.textContent = "Join Queue";
+      if (!res || res.error) { errEl.textContent = res.error || "Something went wrong."; errEl.classList.remove("hidden"); return; }
+      document.getElementById("conf-barber").textContent = selectedBarber.name;
+      document.getElementById("conf-pos").textContent    = "#" + res.position;
+      document.getElementById("conf-ahead").textContent  = res.ahead;
+      document.getElementById("conf-wait").textContent   = "~" + (res.ahead * selectedBarber.avgMinutes) + "m";
+      document.getElementById("step-form").classList.add("hidden");
+      document.getElementById("step-done").classList.remove("hidden");
+    }).catch(function() {
+      btn.disabled = false; btn.textContent = "Join Queue";
+      errEl.textContent = "Something went wrong. Please try again.";
+      errEl.classList.remove("hidden");
+    });
+}
+
+loadBarbers();
+</script>
+</body>
+</html>
