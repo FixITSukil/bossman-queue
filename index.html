@@ -83,7 +83,6 @@
       <div><div class="stat-val" id="conf-ahead">0</div><div class="stat-label">ahead of you</div></div>
       <div><div class="stat-val" id="conf-wait">~0m</div><div class="stat-label">est. wait</div></div>
     </div>
-    <p class="note">We'll WhatsApp you when it's almost your turn.</p>
   </div>
 </div>
 
@@ -110,7 +109,7 @@ function showForm(barber) {
   selectedBarber = barber;
   var count = queueCounts[barber.id] || 0;
   document.getElementById("form-title").textContent = "Join " + barber.name + "'s queue";
-  document.getElementById("form-meta").textContent = count + " waiting · ~" + (count * barber.avgMinutes) + " min";
+  document.getElementById("form-meta").textContent = count + " waiting · ~" + (count * (barber.avgMinutes || 30)) + " min";
   document.getElementById("step-pick").classList.add("hidden");
   document.getElementById("step-form").classList.remove("hidden");
   document.getElementById("form-error").classList.add("hidden");
