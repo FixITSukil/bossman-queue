@@ -72,17 +72,19 @@
 <!-- Step 3: Confirmation -->
 <div id="step-done" class="hidden">
   <div class="done-box">
-    <div class="done-icon">✅</div>
-    <h2>You're in the queue!</h2>
+    <div class="done-icon" id="conf-icon">✅</div>
+    <h2 id="conf-title">You're in the queue!</h2>
     <p style="color:#78716c;margin-top:0.5rem;">Barber: <strong id="conf-barber"></strong></p>
-    <div class="badge">
+    <div class="badge" id="conf-badge">
       <div class="pos" id="conf-pos">#1</div>
       <div class="pos-label">your position</div>
     </div>
-    <div class="stats">
+    <div class="stats" id="conf-stats">
       <div><div class="stat-val" id="conf-ahead">0</div><div class="stat-label">ahead of you</div></div>
       <div><div class="stat-val" id="conf-wait">~0m</div><div class="stat-label">est. wait</div></div>
     </div>
+    <p style="font-size:0.7rem;color:#d6d3d1;margin-top:0.5rem;" id="conf-refresh">Refreshes every 30 seconds</p>
+    <button class="btn" id="btn-leave" onclick="leaveQueue()" style="margin-top:1rem;background:#f5f5f4;color:#78716c;">Leave Queue</button>
   </div>
 </div>
 
@@ -93,6 +95,9 @@ var API = "https://script.google.com/macros/s/AKfycbzbQwHdDmrGWLWMI6yST7-zCb69k1
 var barbers = [];
 var selectedBarber = null;
 var queueCounts = {};
+var myEntryId = null;
+var myBarberId = null;
+var refreshInterval = null;
 
 function call(params) {
   var qs = Object.keys(params).map(function(k) { return k + "=" + encodeURIComponent(params[k]); }).join("&");
@@ -137,7 +142,11 @@ function loadBarbers() {
 function renderBarbers() {
   var list = document.getElementById("barber-list");
   list.innerHTML = "";
-  if (barbers.length === 0) { list.innerHTML = "<p style='color:#a8a29e;text-align:center'>No barbers available.</p>"; return; }
+  // Feature 4+5: no active barbers = show closed message
+  if (barbers.length === 0) {
+    list.innerHTML = "<div style='text-align:center;padding:2rem 0'><div style='font-size:2rem'>🚫</div><p style='font-weight:600;color:#44403c;margin-top:0.5rem'>We're closed right now</p><p style='color:#a8a29e;font-size:0.85rem;margin-top:0.25rem'>All barbers are currently unavailable.<br>Please come back later.</p></div>";
+    return;
+  }
   barbers.forEach(function(b) {
     var count = queueCounts[b.id] || 0;
     var btn = document.createElement("button");
@@ -160,17 +169,71 @@ function joinQueue() {
     .then(function(res) {
       btn.disabled = false; btn.textContent = "Join Queue";
       if (!res || res.error) { errEl.textContent = res.error || "Something went wrong."; errEl.classList.remove("hidden"); return; }
+      myEntryId  = res.id;
+      myBarberId = selectedBarber.id;
       document.getElementById("conf-barber").textContent = selectedBarber.name;
       document.getElementById("conf-pos").textContent    = "#" + res.position;
       document.getElementById("conf-ahead").textContent  = res.ahead;
-      document.getElementById("conf-wait").textContent   = "~" + (res.ahead * selectedBarber.avgMinutes) + "m";
+      document.getElementById("conf-wait").textContent   = "~" + (res.ahead * (selectedBarber.avgMinutes || 30)) + "m";
       document.getElementById("step-form").classList.add("hidden");
       document.getElementById("step-done").classList.remove("hidden");
+      // Feature 1: start live refresh
+      if (refreshInterval) clearInterval(refreshInterval);
+      refreshInterval = setInterval(refreshPosition, 30000);
     }).catch(function() {
       btn.disabled = false; btn.textContent = "Join Queue";
       errEl.textContent = "Something went wrong. Please try again.";
       errEl.classList.remove("hidden");
     });
+}
+
+// Feature 1: refresh position on confirmation screen
+function refreshPosition() {
+  if (!myEntryId || !myBarberId) return;
+  call({ action: "getQueue", barberId: myBarberId }).then(function(queue) {
+    var entry = (queue || []).find(function(e) { return e.id === myEntryId; });
+    if (!entry) {
+      // Entry gone — either called or removed
+      clearInterval(refreshInterval);
+      document.getElementById("conf-icon").textContent = "💈";
+      document.getElementById("conf-title").textContent = "It's your turn!";
+      document.getElementById("conf-badge").style.background = "#fef3c7";
+      document.getElementById("conf-pos").textContent = "Go!";
+      document.getElementById("conf-stats").classList.add("hidden");
+      document.getElementById("conf-refresh").classList.add("hidden");
+      document.getElementById("btn-leave").classList.add("hidden");
+      return;
+    }
+    var ahead = (queue || []).filter(function(e) { return e.status === "waiting" && e.position < entry.position; }).length;
+    var called = (queue || []).find(function(e) { return e.status === "called"; });
+    var currentDuration = (called && called.durationMinutes) ? called.durationMinutes : (selectedBarber ? selectedBarber.avgMinutes || 30 : 30);
+    var waitMins = ahead > 0 ? currentDuration + (ahead - 1) * (selectedBarber ? selectedBarber.avgMinutes || 30 : 30) : 0;
+    document.getElementById("conf-ahead").textContent = ahead;
+    document.getElementById("conf-wait").textContent  = "~" + waitMins + "m";
+    // Update position badge
+    var pos = (queue || []).filter(function(e) { return e.status === "waiting" && e.position <= entry.position; }).length;
+    document.getElementById("conf-pos").textContent = "#" + pos;
+  }).catch(function() {});
+}
+
+// Feature 2: leave queue
+function leaveQueue() {
+  if (!myEntryId) return;
+  if (!confirm("Are you sure you want to leave the queue?")) return;
+  document.getElementById("btn-leave").disabled = true;
+  document.getElementById("btn-leave").textContent = "Leaving...";
+  call({ action: "updateStatus", id: myEntryId, status: "no_show", barberName: "" }).then(function() {
+    clearInterval(refreshInterval);
+    document.getElementById("conf-icon").textContent = "👋";
+    document.getElementById("conf-title").textContent = "You've left the queue";
+    document.getElementById("conf-badge").classList.add("hidden");
+    document.getElementById("conf-stats").classList.add("hidden");
+    document.getElementById("conf-refresh").classList.add("hidden");
+    document.getElementById("btn-leave").classList.add("hidden");
+  }).catch(function() {
+    document.getElementById("btn-leave").disabled = false;
+    document.getElementById("btn-leave").textContent = "Leave Queue";
+  });
 }
 
 loadBarbers();

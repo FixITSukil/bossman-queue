@@ -20,6 +20,7 @@ function doGet(e) {
   else if (action === "updateStatus") result = updateStatus(e.parameter);
   else if (action === "toggleActive") result = toggleActive(e.parameter.barberId);
   else if (action === "getBarberByPin") result = getBarberByPin(e.parameter.pin);
+  else if (action === "clearQueue")     result = clearOldQueue();
   else result = { error: "Unknown action" };
 
   return ContentService
@@ -123,6 +124,26 @@ function callNext(barberId, barberName, durationMinutes) {
     }
   }
   return { error: "No one waiting" };
+}
+
+// ─── DAILY AUTO-CLEAR ──────────────────────────────────────────────────────
+// Run clearOldQueue() manually or set a daily time-based trigger in Apps Script:
+// Apps Script → Triggers → Add trigger → clearOldQueue → Time-driven → Day timer → e.g. 11:00 PM
+function clearOldQueue() {
+  var sheet = getQueueSheet();
+  var rows  = sheet.getDataRange().getValues();
+  var today = new Date().toDateString();
+  var toDelete = [];
+  for (var i = rows.length - 1; i >= 1; i--) {
+    var createdAt = rows[i][8] ? new Date(rows[i][8]).toDateString() : null;
+    var status    = rows[i][5];
+    // Delete rows that are done/no_show OR are from a previous day
+    if (status === "done" || status === "no_show" || (createdAt && createdAt !== today)) {
+      toDelete.push(i + 1);
+    }
+  }
+  toDelete.forEach(function(rowNum) { sheet.deleteRow(rowNum); });
+  return { ok: true, deleted: toDelete.length };
 }
 
 // ─── NOTIFICATIONS ─────────────────────────────────────────────────────────
