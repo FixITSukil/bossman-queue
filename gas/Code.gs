@@ -35,7 +35,7 @@ function getBarbers() {
   var barbers = [];
   for (var i = 1; i < rows.length; i++) {
     if (rows[i][3]) {
-      barbers.push({ id: rows[i][0], name: rows[i][1], pin: rows[i][2], isActive: rows[i][3], avgMinutes: rows[i][4] });
+      barbers.push({ id: rows[i][0], name: rows[i][1], pin: rows[i][2], isActive: rows[i][3], avgMinutes: rows[i][4], role: rows[i][5] || "barber" });
     }
   }
   return barbers;
@@ -46,7 +46,7 @@ function getAllBarbers() {
   var barbers = [];
   for (var i = 1; i < rows.length; i++) {
     if (rows[i][0]) {
-      barbers.push({ id: rows[i][0], name: rows[i][1], pin: rows[i][2], isActive: rows[i][3], avgMinutes: rows[i][4] });
+      barbers.push({ id: rows[i][0], name: rows[i][1], pin: rows[i][2], isActive: rows[i][3], avgMinutes: rows[i][4], role: rows[i][5] || "barber" });
     }
   }
   return barbers;
@@ -56,7 +56,7 @@ function getBarberByPin(pin) {
   var rows = getBarbersSheet().getDataRange().getValues();
   for (var i = 1; i < rows.length; i++) {
     if (String(rows[i][2]) === String(pin)) {
-      return { id: rows[i][0], name: rows[i][1], pin: rows[i][2], isActive: rows[i][3], avgMinutes: rows[i][4] };
+      return { id: rows[i][0], name: rows[i][1], pin: rows[i][2], isActive: rows[i][3], avgMinutes: rows[i][4], role: rows[i][5] || "barber" };
     }
   }
   return null;

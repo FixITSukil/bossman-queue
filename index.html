@@ -23,6 +23,8 @@
   .card-name { font-family: var(--serif); font-size: 1.15rem; font-weight: 700; color: var(--cream); }
   .card-meta { color: var(--cream-dim); font-size: 0.82rem; margin-top: 0.3rem; letter-spacing: 0.02em; }
   .arrow { color: var(--gold); font-size: 1.5rem; }
+  .worker-divider { text-align: center; color: var(--gold); font-size: 0.68rem; letter-spacing: 0.28em; text-transform: uppercase; margin: 0.75rem 0 0.25rem; opacity: 0.85; }
+  .role-tag { font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--pine); background: var(--gold); padding: 0.12rem 0.45rem; border-radius: 999px; vertical-align: middle; margin-left: 0.4rem; font-weight: 600; }
   .stack { display: flex; flex-direction: column; gap: 0.75rem; width: 100%; margin-top: 1.75rem; }
 
   .panel { background: var(--moss); border: 1px solid var(--line); border-radius: 1rem; box-shadow: var(--shadow); padding: 1.5rem; width: 100%; }
@@ -37,6 +39,10 @@
   input::placeholder { color: #5f6b5c; }
   input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201,167,106,0.18); }
   .hint { font-size: 0.72rem; color: var(--cream-dim); margin-top: -0.75rem; margin-bottom: 1rem; }
+  .facial-opt { display: flex; align-items: center; gap: 0.6rem; background: var(--pine); border: 1.5px solid var(--fern); border-radius: 0.6rem; padding: 0.75rem 0.85rem; margin-bottom: 1rem; cursor: pointer; text-transform: none; letter-spacing: 0; }
+  .facial-opt input { width: 1.15rem; height: 1.15rem; margin: 0; accent-color: var(--gold); flex-shrink: 0; }
+  .facial-opt span { font-size: 0.85rem; color: var(--cream); font-weight: 400; }
+  .facial-opt strong { color: var(--gold); }
   .btn-full { width: 100%; padding: 0.85rem; font-size: 1rem; }
   .btn-back { background: none; border: none; color: var(--gold); font-size: 0.85rem; font-weight: 500; cursor: pointer; margin-bottom: 1rem; padding: 0; letter-spacing: 0.05em; }
   .error { color: #e88; font-size: 0.85rem; margin-bottom: 0.75rem; }
@@ -84,6 +90,10 @@
     <label>WhatsApp Number</label>
     <input type="tel" id="inp-phone" placeholder="e.g. 60123456789">
     <p class="hint">Include country code, no spaces or dashes</p>
+    <label class="facial-opt hidden" id="facial-row" for="inp-facial">
+      <input type="checkbox" id="inp-facial">
+      <span>My service includes a <strong>facial</strong> (with Jassy)</span>
+    </label>
     <button class="btn-gold btn-full" id="btn-join" onclick="joinQueue()">Join Queue</button>
   </div>
 </div>
@@ -119,6 +129,9 @@ var queueCounts = {};
 var myEntryId = null;
 var myBarberId = null;
 var refreshInterval = null;
+var facialTherapist = null;
+var myFacialEntryId = null;
+var myFacialBarberId = null;
 
 function call(params) {
   var qs = Object.keys(params).map(function(k) { return k + "=" + encodeURIComponent(params[k]); }).join("&");
@@ -148,7 +161,7 @@ tickClock();
 
 var STORE_KEY = "bossman_queue";
 function saveEntry(barber) {
-  localStorage.setItem(STORE_KEY, JSON.stringify({ entryId: myEntryId, id: barber.id, name: barber.name, avgMinutes: barber.avgMinutes || 30 }));
+  localStorage.setItem(STORE_KEY, JSON.stringify({ entryId: myEntryId, id: barber.id, name: barber.name, avgMinutes: AVG, facialEntryId: myFacialEntryId, facialBarberId: myFacialBarberId }));
 }
 function clearEntry() { localStorage.removeItem(STORE_KEY); }
 
@@ -164,6 +177,8 @@ function resumeEntry() {
     selectedBarber = { id: saved.id, name: saved.name, avgMinutes: AVG };
     myEntryId  = saved.entryId;
     myBarberId = saved.id;
+    myFacialEntryId  = saved.facialEntryId || null;
+    myFacialBarberId = saved.facialBarberId || null;
     document.getElementById("conf-barber").textContent = saved.name;
     document.getElementById("step-pick").classList.add("hidden");
     document.getElementById("step-done").classList.remove("hidden");
@@ -182,8 +197,16 @@ function showPick() {
 function showForm(barber) {
   selectedBarber = barber;
   var count = queueCounts[barber.id] || 0;
+  var isTherapist = barber.role === "therapist";
   document.getElementById("form-title").textContent = "Join " + barber.name + "'s queue";
-  document.getElementById("form-meta").textContent = count + " waiting · ~" + (count * (barber.avgMinutes || 30)) + " min";
+  document.getElementById("form-meta").textContent = isTherapist
+    ? (count + " waiting · facial treatments")
+    : (count + " waiting · ~" + (count * AVG) + " min");
+  // Facial add-on checkbox only for barbers, and only if a therapist is available
+  var facialRow = document.getElementById("facial-row");
+  if (!isTherapist && facialTherapist) facialRow.classList.remove("hidden");
+  else facialRow.classList.add("hidden");
+  document.getElementById("inp-facial").checked = false;
   document.getElementById("step-pick").classList.add("hidden");
   document.getElementById("step-form").classList.remove("hidden");
   document.getElementById("form-error").classList.add("hidden");
@@ -211,21 +234,40 @@ function loadBarbers() {
   });
 }
 
+function makeCard(b, isTherapist) {
+  var count = queueCounts[b.id] || 0;
+  var btn = document.createElement("button");
+  btn.className = "card";
+  var meta = isTherapist
+    ? (count + ' waiting &nbsp;·&nbsp; facial treatments')
+    : (count + ' waiting &nbsp;·&nbsp; ~' + (count * AVG) + ' min');
+  var tag = isTherapist ? ' <span class="role-tag">Facial Therapist</span>' : '';
+  btn.innerHTML = '<div><div class="card-name">' + b.name + tag + '</div><div class="card-meta">' + meta + '</div></div><div class="arrow">›</div>';
+  btn.onclick = function() { showForm(b); };
+  return btn;
+}
+
 function renderBarbers() {
   var list = document.getElementById("barber-list");
   list.innerHTML = "";
+  var realBarbers = barbers.filter(function(b) { return b.role !== "therapist"; });
+  var therapists  = barbers.filter(function(b) { return b.role === "therapist"; });
+  facialTherapist = therapists[0] || null;
+
   if (barbers.length === 0) {
-    list.innerHTML = "<div class='closed'><div class='ico'>🚫</div><div class='ttl'>We're closed right now</div><div class='txt'>All barbers are currently unavailable.<br>Please come back later.</div></div>";
+    list.innerHTML = "<div class='closed'><div class='ico'>🚫</div><div class='ttl'>We're closed right now</div><div class='txt'>All workers are currently unavailable.<br>Please come back later.</div></div>";
     return;
   }
-  barbers.forEach(function(b) {
-    var count = queueCounts[b.id] || 0;
-    var btn = document.createElement("button");
-    btn.className = "card";
-    btn.innerHTML = '<div><div class="card-name">' + b.name + '</div><div class="card-meta">' + count + ' waiting &nbsp;·&nbsp; ~' + (count * (b.avgMinutes || 30)) + ' min</div></div><div class="arrow">›</div>';
-    btn.onclick = function() { showForm(b); };
-    list.appendChild(btn);
-  });
+
+  realBarbers.forEach(function(b) { list.appendChild(makeCard(b, false)); });
+
+  if (therapists.length) {
+    var div = document.createElement("div");
+    div.className = "worker-divider";
+    div.textContent = "Facial Treatments";
+    list.appendChild(div);
+    therapists.forEach(function(b) { list.appendChild(makeCard(b, true)); });
+  }
 }
 
 function joinQueue() {
@@ -242,11 +284,22 @@ function joinQueue() {
       if (!res || res.error) { errEl.textContent = res.error || "Something went wrong."; errEl.classList.remove("hidden"); return; }
       myEntryId  = res.id;
       myBarberId = selectedBarber.id;
+
+      // Parallel facial booking → drop the customer into Jassy's queue immediately
+      var wantsFacial = !document.getElementById("facial-row").classList.contains("hidden")
+                        && document.getElementById("inp-facial").checked;
+      if (wantsFacial && facialTherapist) {
+        call({ action: "joinQueue", barberId: facialTherapist.id, barberName: facialTherapist.name, customerName: name + " (facial)", phone: phone })
+          .then(function(r2) {
+            if (r2 && r2.id) { myFacialEntryId = r2.id; myFacialBarberId = facialTherapist.id; saveEntry(selectedBarber); }
+          }).catch(function() {});
+      }
+
       saveEntry(selectedBarber);
-      document.getElementById("conf-barber").textContent = selectedBarber.name;
+      document.getElementById("conf-barber").textContent = selectedBarber.name + (wantsFacial ? " + Facial (Jassy)" : "");
       document.getElementById("conf-pos").textContent    = "#" + res.position;
       document.getElementById("conf-ahead").textContent  = res.ahead;
-      document.getElementById("conf-wait").textContent   = "~" + (res.ahead * (selectedBarber.avgMinutes || 30)) + "m";
+      document.getElementById("conf-wait").textContent   = "~" + (res.ahead * AVG) + "m";
       document.getElementById("step-form").classList.add("hidden");
       document.getElementById("step-done").classList.remove("hidden");
       tickClock();
@@ -290,7 +343,9 @@ function leaveQueue() {
   if (!myEntryId) return;
   if (!confirm("Are you sure you want to leave the queue?")) return;
   document.getElementById("btn-leave").textContent = "Leaving…";
-  call({ action: "updateStatus", id: myEntryId, status: "no_show", barberName: "" }).then(function() {
+  var calls = [ call({ action: "updateStatus", id: myEntryId, status: "no_show", barberName: "" }) ];
+  if (myFacialEntryId) calls.push(call({ action: "updateStatus", id: myFacialEntryId, status: "no_show", barberName: "" }));
+  Promise.all(calls).then(function() {
     clearInterval(refreshInterval);
     clearEntry();
     document.getElementById("conf-icon").textContent = "👋";
