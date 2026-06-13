@@ -64,7 +64,7 @@
     <div class="header-row">
       <div>
         <h1 id="barber-name">Loading…</h1>
-        <p class="sub">Barber Dashboard</p>
+        <p class="sub" id="clock">🕐 --:--:-- MYT</p>
       </div>
       <button class="toggle active" id="toggle-btn" onclick="toggleActive()">Active</button>
     </div>
@@ -136,6 +136,22 @@ function call(params) {
   return fetch(API + "?" + qs).then(function(r) { return r.json(); });
 }
 
+function remainingCut(serving, avg) {
+  if (!serving) return 0;
+  var duration = serving.durationMinutes || avg;
+  if (!serving.calledAt) return duration;
+  var elapsedMin = (Date.now() - new Date(serving.calledAt).getTime()) / 60000;
+  return Math.max(0, Math.round(duration - elapsedMin));
+}
+
+function tickClock() {
+  var el = document.getElementById("clock");
+  if (!el) return;
+  var t = new Date().toLocaleTimeString("en-GB", { timeZone: "Asia/Kuala_Lumpur", hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  el.textContent = "🕐 " + t + " MYT";
+}
+setInterval(tickClock, 1000);
+
 function init() {
   call({ action: "getBarberByPin", pin: PIN }).then(function(b) {
     if (!b || b.error) {
@@ -162,10 +178,12 @@ function renderQueue(queue) {
   var waiting = queue.filter(function(q) { return q.status === "waiting"; });
   var serving  = queue.find(function(q)  { return q.status === "called"; });
 
-  var currentDuration = (serving && serving.durationMinutes) ? serving.durationMinutes : (barber ? barber.avgMinutes || 30 : 30);
-  var totalWait = currentDuration + Math.max(0, waiting.length - 1) * (barber ? barber.avgMinutes || 30 : 30);
+  var avg = barber ? barber.avgMinutes || 30 : 30;
+  var remaining = remainingCut(serving, avg);
+  // Wait for the last person in line (time until the queue clears)
+  var lastWait = waiting.length === 0 ? 0 : (serving ? remaining : 0) + (waiting.length - 1) * avg;
   document.getElementById("stat-waiting").textContent = waiting.length;
-  document.getElementById("stat-wait").textContent = "~" + (serving ? totalWait : waiting.length * (barber ? barber.avgMinutes || 30 : 30)) + "m";
+  document.getElementById("stat-wait").textContent = "~" + lastWait + "m";
 
   var servingSection = document.getElementById("serving-section");
   if (serving) {
@@ -189,7 +207,7 @@ function renderQueue(queue) {
   }
   list.innerHTML = "";
   waiting.forEach(function(entry, i) {
-    var waitMins = currentDuration + i * (barber ? barber.avgMinutes || 30 : 30);
+    var waitMins = (serving ? remaining : 0) + i * avg;
     var item = document.createElement("div");
     item.className = "queue-item";
     item.innerHTML =

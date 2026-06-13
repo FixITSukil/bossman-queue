@@ -86,7 +86,8 @@ function getQueue(barberId) {
         customerName: rows[i][3], phone: rows[i][4],
         status: rows[i][5], position: rows[i][6],
         notified: rows[i][7], createdAt: rows[i][8],
-        durationMinutes: rows[i][9] || 0
+        durationMinutes: rows[i][9] || 0,
+        calledAt: rows[i][10] || ""
       });
     }
   }
@@ -97,10 +98,19 @@ function getQueue(barberId) {
 function joinQueue(params) {
   var sheet    = getQueueSheet();
   var queue    = getQueue(params.barberId);
+
+  // Anti-abuse: block the same phone from joining the same barber's queue twice
+  var phone = String(params.phone).replace(/\D/g, "");
+  for (var j = 0; j < queue.length; j++) {
+    if (String(queue[j].phone).replace(/\D/g, "") === phone) {
+      return { error: "You're already in this barber's queue." };
+    }
+  }
+
   var position = queue.length + 1;
   var id       = Utilities.getUuid();
   var now      = new Date().toISOString();
-  sheet.appendRow([id, params.barberId, params.barberName, params.customerName, params.phone, "waiting", position, false, now, 0]);
+  sheet.appendRow([id, params.barberId, params.barberName, params.customerName, params.phone, "waiting", position, false, now, 0, ""]);
   checkAndNotify(params.barberId, params.barberName);
   return { ok: true, id: id, position: position, ahead: queue.length };
 }
@@ -129,6 +139,7 @@ function callNext(barberId, barberName, durationMinutes) {
     if (rows[i][1] === barberId && rows[i][5] === "waiting") {
       sheet.getRange(i + 1, 6).setValue("called");
       sheet.getRange(i + 1, 10).setValue(mins);
+      sheet.getRange(i + 1, 11).setValue(new Date().toISOString()); // called_at
       sendWhatsApp(rows[i][4], rows[i][3], barberName, "now");
       sheet.getRange(i + 1, 8).setValue(true);
       checkAndNotify(barberId, barberName);
@@ -141,6 +152,17 @@ function callNext(barberId, barberName, durationMinutes) {
 // ─── DAILY AUTO-CLEAR ──────────────────────────────────────────────────────
 // Run clearOldQueue() manually or set a daily time-based trigger in Apps Script:
 // Apps Script → Triggers → Add trigger → clearOldQueue → Time-driven → Day timer → e.g. 11:00 PM
+// Run this ONCE from the Apps Script editor to schedule the nightly reset.
+function setupDailyReset() {
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    if (t.getHandlerFunction() === "clearOldQueue") ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger("clearOldQueue")
+    .timeBased().atHour(23).everyDays(1)
+    .inTimezone("Asia/Kuala_Lumpur").create();
+  return "Daily reset scheduled for ~11 PM Malaysia time.";
+}
+
 function clearOldQueue() {
   var sheet = getQueueSheet();
   var rows  = sheet.getDataRange().getValues();

@@ -100,7 +100,8 @@
       <div><div class="stat-val" id="conf-ahead">0</div><div class="stat-label">ahead of you</div></div>
       <div><div class="stat-val" id="conf-wait">~0m</div><div class="stat-label">est. wait</div></div>
     </div>
-    <p style="font-size:0.7rem;color:var(--cream-dim);margin-top:0.5rem;letter-spacing:0.05em;" id="conf-refresh">Refreshes every 30 seconds</p>
+    <p style="font-size:0.78rem;color:var(--gold);margin-top:0.75rem;letter-spacing:0.08em;" id="conf-clock">🕐 --:--:-- MYT</p>
+    <p style="font-size:0.7rem;color:var(--cream-dim);margin-top:0.25rem;letter-spacing:0.05em;" id="conf-refresh">Updates automatically every 30 seconds</p>
     <button class="btn-back" id="btn-leave" onclick="leaveQueue()" style="margin-top:1.25rem;display:block;width:100%;color:var(--cream-dim);">Leave Queue</button>
   </div>
 </div>
@@ -121,6 +122,24 @@ function call(params) {
   var qs = Object.keys(params).map(function(k) { return k + "=" + encodeURIComponent(params[k]); }).join("&");
   return fetch(API + "?" + qs).then(function(r) { return r.json(); });
 }
+
+// Minutes left on the current cut, counting down with real elapsed time
+function remainingCut(serving, avg) {
+  if (!serving) return 0;
+  var duration = serving.durationMinutes || avg;
+  if (!serving.calledAt) return duration;
+  var elapsedMin = (Date.now() - new Date(serving.calledAt).getTime()) / 60000;
+  return Math.max(0, Math.round(duration - elapsedMin));
+}
+
+// Live Malaysia clock
+function tickClock() {
+  var el = document.getElementById("conf-clock");
+  if (!el) return;
+  var t = new Date().toLocaleTimeString("en-GB", { timeZone: "Asia/Kuala_Lumpur", hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  el.textContent = "🕐 " + t + " MYT";
+}
+setInterval(tickClock, 1000);
 
 function showPick() {
   document.getElementById("step-pick").classList.remove("hidden");
@@ -194,6 +213,8 @@ function joinQueue() {
       document.getElementById("conf-wait").textContent   = "~" + (res.ahead * (selectedBarber.avgMinutes || 30)) + "m";
       document.getElementById("step-form").classList.add("hidden");
       document.getElementById("step-done").classList.remove("hidden");
+      tickClock();
+      refreshPosition();
       if (refreshInterval) clearInterval(refreshInterval);
       refreshInterval = setInterval(refreshPosition, 30000);
     }).catch(function() {
@@ -217,10 +238,10 @@ function refreshPosition() {
       document.getElementById("btn-leave").classList.add("hidden");
       return;
     }
+    var avg = selectedBarber ? selectedBarber.avgMinutes || 30 : 30;
     var ahead = (queue || []).filter(function(e) { return e.status === "waiting" && e.position < entry.position; }).length;
     var called = (queue || []).find(function(e) { return e.status === "called"; });
-    var currentDuration = (called && called.durationMinutes) ? called.durationMinutes : (selectedBarber ? selectedBarber.avgMinutes || 30 : 30);
-    var waitMins = ahead > 0 ? currentDuration + (ahead - 1) * (selectedBarber ? selectedBarber.avgMinutes || 30 : 30) : 0;
+    var waitMins = remainingCut(called, avg) + ahead * avg;
     document.getElementById("conf-ahead").textContent = ahead;
     document.getElementById("conf-wait").textContent  = "~" + waitMins + "m";
     var pos = (queue || []).filter(function(e) { return e.status === "waiting" && e.position <= entry.position; }).length;

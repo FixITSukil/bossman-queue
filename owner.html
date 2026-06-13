@@ -53,7 +53,8 @@
   <div class="header">
     <div>
       <h1>Bossman — Owner</h1>
-      <p id="last-refresh">Loading…</p>
+      <p id="clock">🕐 --:--:-- MYT</p>
+      <p id="last-refresh" style="font-size:0.68rem;color:var(--cream-dim);opacity:0.7;margin-top:0.1rem;">Loading…</p>
     </div>
     <button class="refresh-btn" onclick="loadAll()">↻ Refresh</button>
   </div>
@@ -79,6 +80,22 @@ function call(params) {
   var qs = Object.keys(params).map(function(k) { return k + "=" + encodeURIComponent(params[k]); }).join("&");
   return fetch(API + "?" + qs).then(function(r) { return r.json(); });
 }
+
+function remainingCut(serving, avg) {
+  if (!serving) return 0;
+  var duration = serving.durationMinutes || avg;
+  if (!serving.calledAt) return duration;
+  var elapsedMin = (Date.now() - new Date(serving.calledAt).getTime()) / 60000;
+  return Math.max(0, Math.round(duration - elapsedMin));
+}
+
+function tickClock() {
+  var el = document.getElementById("clock");
+  if (!el) return;
+  var t = new Date().toLocaleTimeString("en-GB", { timeZone: "Asia/Kuala_Lumpur", hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  el.textContent = "🕐 " + t + " MYT";
+}
+setInterval(tickClock, 1000);
 
 function loadAll() {
   call({ action: "getAllBarbers" }).then(function(all) {
@@ -115,11 +132,13 @@ function render(barbers, queues) {
 
     var pillClass = !b.isActive ? "pill-inactive" : serving ? "pill-busy" : "pill-active";
     var pillText  = !b.isActive ? "Inactive" : serving ? "Cutting" : "Active";
-    var currentDuration = (serving && serving.durationMinutes) ? serving.durationMinutes : (b.avgMinutes || 30);
+    var avg = b.avgMinutes || 30;
+    var remaining = remainingCut(serving, avg);
 
     html += '<div class="barber-card"><div class="barber-header">';
     html +=   '<div><div class="barber-name">' + b.name + '</div>';
-    html +=   '<div class="barber-meta">' + waiting.length + ' waiting · ~' + (waiting.length * (b.avgMinutes || 30)) + ' min total</div></div>';
+    var lastWait = waiting.length === 0 ? 0 : (serving ? remaining : 0) + (waiting.length - 1) * avg;
+    html +=   '<div class="barber-meta">' + waiting.length + ' waiting · ~' + lastWait + ' min total</div></div>';
     html +=   '<span class="status-pill ' + pillClass + '">' + pillText + '</span></div>';
 
     if (serving) {
@@ -133,7 +152,7 @@ function render(barbers, queues) {
       html += '<div class="empty-queue">Queue is empty</div>';
     } else {
       waiting.forEach(function(entry, i) {
-        var waitMins = currentDuration + i * (b.avgMinutes || 30);
+        var waitMins = (serving ? remaining : 0) + i * avg;
         html += '<div class="queue-row"><div class="q-num">' + (i + 1) + '</div>';
         html +=   '<div><div class="q-name">' + entry.customerName + '</div>';
         html +=   '<div class="q-phone">' + entry.phone + '</div></div>';
