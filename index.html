@@ -197,14 +197,14 @@ function showPick() {
 function showForm(barber) {
   selectedBarber = barber;
   var count = queueCounts[barber.id] || 0;
-  var isTherapist = barber.role === "therapist";
+  var therapist = isTherapist(barber);
   document.getElementById("form-title").textContent = "Join " + barber.name + "'s queue";
-  document.getElementById("form-meta").textContent = isTherapist
+  document.getElementById("form-meta").textContent = therapist
     ? (count + " waiting · facial treatments")
     : (count + " waiting · ~" + (count * AVG) + " min");
   // Facial add-on checkbox only for barbers, and only if a therapist is available
   var facialRow = document.getElementById("facial-row");
-  if (!isTherapist && facialTherapist) facialRow.classList.remove("hidden");
+  if (!therapist && facialTherapist) facialRow.classList.remove("hidden");
   else facialRow.classList.add("hidden");
   document.getElementById("inp-facial").checked = false;
   document.getElementById("step-pick").classList.add("hidden");
@@ -234,14 +234,22 @@ function loadBarbers() {
   });
 }
 
-function makeCard(b, isTherapist) {
+// A worker is a facial therapist by role, or by known id/name (fallback if the
+// backend hasn't been redeployed with the role column yet).
+function isTherapist(b) {
+  return (b.role || "").toLowerCase() === "therapist"
+      || (b.id   || "").toLowerCase() === "jassy"
+      || (b.name || "").toLowerCase() === "jassy";
+}
+
+function makeCard(b, therapist) {
   var count = queueCounts[b.id] || 0;
   var btn = document.createElement("button");
   btn.className = "card";
-  var meta = isTherapist
+  var meta = therapist
     ? (count + ' waiting &nbsp;·&nbsp; facial treatments')
     : (count + ' waiting &nbsp;·&nbsp; ~' + (count * AVG) + ' min');
-  var tag = isTherapist ? ' <span class="role-tag">Facial Therapist</span>' : '';
+  var tag = therapist ? ' <span class="role-tag">Facial Therapist</span>' : '';
   btn.innerHTML = '<div><div class="card-name">' + b.name + tag + '</div><div class="card-meta">' + meta + '</div></div><div class="arrow">›</div>';
   btn.onclick = function() { showForm(b); };
   return btn;
@@ -250,8 +258,8 @@ function makeCard(b, isTherapist) {
 function renderBarbers() {
   var list = document.getElementById("barber-list");
   list.innerHTML = "";
-  var realBarbers = barbers.filter(function(b) { return b.role !== "therapist"; });
-  var therapists  = barbers.filter(function(b) { return b.role === "therapist"; });
+  var realBarbers = barbers.filter(function(b) { return !isTherapist(b); });
+  var therapists  = barbers.filter(function(b) { return isTherapist(b); });
   facialTherapist = therapists[0] || null;
 
   if (barbers.length === 0) {
