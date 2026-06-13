@@ -4,58 +4,78 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Bossman Gentleman's Club Barbershop</title>
+<link rel="stylesheet" href="brand.css">
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #fafaf9; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1.5rem; }
-  h1 { font-size: 1.75rem; font-weight: 700; color: #1c1917; text-align: center; }
-  .subtitle { color: #78716c; margin-top: 0.25rem; text-align: center; font-size: 0.95rem; }
-  .subtitle2 { color: #a8a29e; margin-top: 0.15rem; text-align: center; font-size: 0.8rem; }
-  .card { background: #fff; border-radius: 1rem; box-shadow: 0 2px 12px rgba(0,0,0,0.08); padding: 1.25rem; width: 100%; max-width: 380px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; border: none; text-align: left; transition: box-shadow 0.15s; }
-  .card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.12); }
-  .card-name { font-size: 1.1rem; font-weight: 600; color: #1c1917; }
-  .card-meta { color: #78716c; font-size: 0.85rem; margin-top: 0.25rem; }
-  .arrow { color: #f59e0b; font-size: 1.5rem; }
-  .stack { display: flex; flex-direction: column; gap: 0.75rem; width: 100%; max-width: 380px; margin-top: 1.5rem; }
-  .form-box { background: #fff; border-radius: 1rem; box-shadow: 0 2px 12px rgba(0,0,0,0.08); padding: 1.5rem; width: 100%; max-width: 380px; }
-  .form-box h2 { font-size: 1.2rem; font-weight: 700; color: #1c1917; }
-  .form-box .meta { color: #78716c; font-size: 0.85rem; margin-top: 0.25rem; margin-bottom: 1.25rem; }
-  label { display: block; font-size: 0.875rem; font-weight: 500; color: #44403c; margin-bottom: 0.35rem; }
-  input { width: 100%; border: 1.5px solid #d6d3d1; border-radius: 0.6rem; padding: 0.6rem 0.75rem; font-size: 1rem; color: #1c1917; outline: none; margin-bottom: 1rem; }
-  input:focus { border-color: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,0.15); }
-  .hint { font-size: 0.75rem; color: #a8a29e; margin-top: -0.75rem; margin-bottom: 1rem; }
-  .btn { width: 100%; background: #f59e0b; color: #fff; border: none; border-radius: 0.75rem; padding: 0.8rem; font-size: 1rem; font-weight: 600; cursor: pointer; transition: background 0.15s; }
-  .btn:hover { background: #d97706; }
-  .btn:disabled { opacity: 0.5; cursor: default; }
-  .btn-back { background: none; border: none; color: #f59e0b; font-size: 0.9rem; font-weight: 500; cursor: pointer; margin-bottom: 1rem; padding: 0; }
-  .done-box { background: #fff; border-radius: 1rem; box-shadow: 0 2px 12px rgba(0,0,0,0.08); padding: 2rem 1.5rem; width: 100%; max-width: 380px; text-align: center; }
+  body { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1.5rem; }
+  .wrap { width: 100%; max-width: 380px; }
+  .brand .wordmark { font-size: 2rem; }
+  .brand .tagline { font-size: 0.7rem; }
+  .brand .sub { font-size: 0.8rem; }
+
+  .card {
+    background: var(--moss); border: 1px solid var(--line); border-radius: 1rem;
+    box-shadow: var(--shadow); padding: 1.1rem 1.25rem; width: 100%;
+    display: flex; align-items: center; justify-content: space-between;
+    cursor: pointer; text-align: left; transition: border-color 0.15s, transform 0.05s;
+  }
+  .card:hover { border-color: var(--gold); }
+  .card:active { transform: translateY(1px); }
+  .card-name { font-family: var(--serif); font-size: 1.15rem; font-weight: 700; color: var(--cream); }
+  .card-meta { color: var(--cream-dim); font-size: 0.82rem; margin-top: 0.3rem; letter-spacing: 0.02em; }
+  .arrow { color: var(--gold); font-size: 1.5rem; }
+  .stack { display: flex; flex-direction: column; gap: 0.75rem; width: 100%; margin-top: 1.75rem; }
+
+  .panel { background: var(--moss); border: 1px solid var(--line); border-radius: 1rem; box-shadow: var(--shadow); padding: 1.5rem; width: 100%; }
+  .panel h2 { font-family: var(--serif); font-size: 1.3rem; font-weight: 700; color: var(--cream); }
+  .panel .meta { color: var(--gold); font-size: 0.8rem; margin-top: 0.3rem; margin-bottom: 1.25rem; letter-spacing: 0.05em; }
+  label { display: block; font-size: 0.8rem; font-weight: 500; color: var(--cream-dim); margin-bottom: 0.4rem; letter-spacing: 0.04em; text-transform: uppercase; }
+  input {
+    width: 100%; background: var(--pine); border: 1.5px solid var(--fern); border-radius: 0.6rem;
+    padding: 0.7rem 0.85rem; font-size: 1rem; color: var(--cream); outline: none; margin-bottom: 1rem;
+    font-family: var(--sans);
+  }
+  input::placeholder { color: #5f6b5c; }
+  input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201,167,106,0.18); }
+  .hint { font-size: 0.72rem; color: var(--cream-dim); margin-top: -0.75rem; margin-bottom: 1rem; }
+  .btn-full { width: 100%; padding: 0.85rem; font-size: 1rem; }
+  .btn-back { background: none; border: none; color: var(--gold); font-size: 0.85rem; font-weight: 500; cursor: pointer; margin-bottom: 1rem; padding: 0; letter-spacing: 0.05em; }
+  .error { color: #e88; font-size: 0.85rem; margin-bottom: 0.75rem; }
+
+  .done-box { text-align: center; }
   .done-icon { font-size: 3.5rem; }
-  .done-box h2 { font-size: 1.4rem; font-weight: 700; color: #1c1917; margin-top: 0.75rem; }
-  .badge { background: #fef3c7; border-radius: 0.75rem; padding: 1rem; margin: 1rem 0; }
-  .badge .pos { font-size: 2.5rem; font-weight: 800; color: #d97706; }
-  .badge .pos-label { color: #92400e; font-size: 0.8rem; }
-  .stats { display: flex; justify-content: space-around; margin: 1rem 0; }
-  .stat-val { font-size: 1.25rem; font-weight: 700; color: #1c1917; }
-  .stat-label { font-size: 0.75rem; color: #78716c; }
-  .note { font-size: 0.75rem; color: #a8a29e; margin-top: 0.5rem; }
-  .error { color: #ef4444; font-size: 0.875rem; margin-bottom: 0.75rem; }
-  .hidden { display: none !important; }
+  .done-box h2 { font-family: var(--serif); font-size: 1.5rem; font-weight: 700; color: var(--cream); margin-top: 0.75rem; }
+  .badge { background: var(--pine); border: 1px solid var(--gold); border-radius: 0.75rem; padding: 1.1rem; margin: 1.25rem 0; }
+  .badge .pos { font-family: var(--serif); font-size: 2.75rem; font-weight: 800; color: var(--gold); }
+  .badge .pos-label { color: var(--cream-dim); font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; }
+  .stats { display: flex; justify-content: space-around; margin: 1.25rem 0; }
+  .stat-val { font-family: var(--serif); font-size: 1.4rem; font-weight: 700; color: var(--cream); }
+  .stat-label { font-size: 0.7rem; color: var(--cream-dim); letter-spacing: 0.06em; text-transform: uppercase; margin-top: 0.15rem; }
+  .closed { text-align: center; padding: 2.5rem 0; }
+  .closed .ico { font-size: 2.5rem; }
+  .closed .ttl { font-family: var(--serif); font-weight: 700; color: var(--cream); margin-top: 0.75rem; font-size: 1.15rem; }
+  .closed .txt { color: var(--cream-dim); font-size: 0.85rem; margin-top: 0.4rem; line-height: 1.5; }
+  #loading { color: var(--cream-dim); text-align: center; padding: 2rem 0; letter-spacing: 0.05em; }
 </style>
 </head>
 <body>
+<div class="wrap">
 
 <!-- Step 1: Pick barber -->
 <div id="step-pick">
-  <h1>✂️ Bossman</h1>
-  <p class="subtitle">Gentleman's Club Barbershop</p>
-  <p class="subtitle2">Choose your barber to join the queue</p>
+  <div class="brand">
+    <img src="logo.png" alt="Bossman" class="logo" onerror="this.style.display='none'">
+    <div class="wordmark">Bossman</div>
+    <div class="tagline">Gentleman's Club</div>
+    <div class="sub">Choose your barber to join the queue</div>
+  </div>
   <div class="stack" id="barber-list">
-    <p style="color:#a8a29e;text-align:center;padding:2rem 0">Loading barbers...</p>
+    <p id="loading">Loading barbers…</p>
   </div>
 </div>
 
 <!-- Step 2: Enter details -->
 <div id="step-form" class="hidden">
-  <div class="form-box">
+  <div class="panel">
     <button class="btn-back" onclick="showPick()">← Back</button>
     <h2 id="form-title">Join queue</h2>
     <p class="meta" id="form-meta"></p>
@@ -65,16 +85,16 @@
     <label>WhatsApp Number</label>
     <input type="tel" id="inp-phone" placeholder="e.g. 60123456789">
     <p class="hint">Include country code, no spaces or dashes</p>
-    <button class="btn" id="btn-join" onclick="joinQueue()">Join Queue</button>
+    <button class="btn-gold btn-full" id="btn-join" onclick="joinQueue()">Join Queue</button>
   </div>
 </div>
 
 <!-- Step 3: Confirmation -->
 <div id="step-done" class="hidden">
-  <div class="done-box">
+  <div class="panel done-box">
     <div class="done-icon" id="conf-icon">✅</div>
     <h2 id="conf-title">You're in the queue!</h2>
-    <p style="color:#78716c;margin-top:0.5rem;">Barber: <strong id="conf-barber"></strong></p>
+    <p style="color:var(--cream-dim);margin-top:0.5rem;">Barber: <strong style="color:var(--cream)" id="conf-barber"></strong></p>
     <div class="badge" id="conf-badge">
       <div class="pos" id="conf-pos">#1</div>
       <div class="pos-label">your position</div>
@@ -83,13 +103,14 @@
       <div><div class="stat-val" id="conf-ahead">0</div><div class="stat-label">ahead of you</div></div>
       <div><div class="stat-val" id="conf-wait">~0m</div><div class="stat-label">est. wait</div></div>
     </div>
-    <p style="font-size:0.7rem;color:#d6d3d1;margin-top:0.5rem;" id="conf-refresh">Refreshes every 30 seconds</p>
-    <button class="btn" id="btn-leave" onclick="leaveQueue()" style="margin-top:1rem;background:#f5f5f4;color:#78716c;">Leave Queue</button>
+    <p style="font-size:0.7rem;color:var(--cream-dim);margin-top:0.5rem;letter-spacing:0.05em;" id="conf-refresh">Refreshes every 30 seconds</p>
+    <button class="btn-back" id="btn-leave" onclick="leaveQueue()" style="margin-top:1.25rem;display:block;width:100%;color:var(--cream-dim);">Leave Queue</button>
   </div>
 </div>
 
+</div>
+
 <script>
-// ← Paste your Apps Script URL here
 var API = "https://script.google.com/macros/s/AKfycbzbQwHdDmrGWLWMI6yST7-zCb69k1F-znD93NMsq6sTs0gSlygR51c9ykPPZysiygWH/exec";
 
 var barbers = [];
@@ -135,23 +156,22 @@ function loadBarbers() {
       }).catch(function() { done++; if (done === barbers.length) renderBarbers(); });
     });
   }).catch(function() {
-    document.getElementById("barber-list").innerHTML = "<p style='color:#ef4444;text-align:center'>Failed to load. Please refresh.</p>";
+    document.getElementById("barber-list").innerHTML = "<p style='color:#e88;text-align:center'>Failed to load. Please refresh.</p>";
   });
 }
 
 function renderBarbers() {
   var list = document.getElementById("barber-list");
   list.innerHTML = "";
-  // Feature 4+5: no active barbers = show closed message
   if (barbers.length === 0) {
-    list.innerHTML = "<div style='text-align:center;padding:2rem 0'><div style='font-size:2rem'>🚫</div><p style='font-weight:600;color:#44403c;margin-top:0.5rem'>We're closed right now</p><p style='color:#a8a29e;font-size:0.85rem;margin-top:0.25rem'>All barbers are currently unavailable.<br>Please come back later.</p></div>";
+    list.innerHTML = "<div class='closed'><div class='ico'>🚫</div><div class='ttl'>We're closed right now</div><div class='txt'>All barbers are currently unavailable.<br>Please come back later.</div></div>";
     return;
   }
   barbers.forEach(function(b) {
     var count = queueCounts[b.id] || 0;
     var btn = document.createElement("button");
     btn.className = "card";
-    btn.innerHTML = '<div><div class="card-name">' + b.name + '</div><div class="card-meta">👥 ' + count + ' waiting &nbsp;·&nbsp; ⏱ ~' + (count * b.avgMinutes) + ' min</div></div><div class="arrow">›</div>';
+    btn.innerHTML = '<div><div class="card-name">' + b.name + '</div><div class="card-meta">' + count + ' waiting &nbsp;·&nbsp; ~' + (count * (b.avgMinutes || 30)) + ' min</div></div><div class="arrow">›</div>';
     btn.onclick = function() { showForm(b); };
     list.appendChild(btn);
   });
@@ -164,7 +184,7 @@ function joinQueue() {
   if (!name || !phone) { errEl.textContent = "Please enter your name and phone number."; errEl.classList.remove("hidden"); return; }
   errEl.classList.add("hidden");
   var btn = document.getElementById("btn-join");
-  btn.disabled = true; btn.textContent = "Joining...";
+  btn.disabled = true; btn.textContent = "Joining…";
   call({ action: "joinQueue", barberId: selectedBarber.id, barberName: selectedBarber.name, customerName: name, phone: phone })
     .then(function(res) {
       btn.disabled = false; btn.textContent = "Join Queue";
@@ -177,7 +197,6 @@ function joinQueue() {
       document.getElementById("conf-wait").textContent   = "~" + (res.ahead * (selectedBarber.avgMinutes || 30)) + "m";
       document.getElementById("step-form").classList.add("hidden");
       document.getElementById("step-done").classList.remove("hidden");
-      // Feature 1: start live refresh
       if (refreshInterval) clearInterval(refreshInterval);
       refreshInterval = setInterval(refreshPosition, 30000);
     }).catch(function() {
@@ -187,17 +206,14 @@ function joinQueue() {
     });
 }
 
-// Feature 1: refresh position on confirmation screen
 function refreshPosition() {
   if (!myEntryId || !myBarberId) return;
   call({ action: "getQueue", barberId: myBarberId }).then(function(queue) {
     var entry = (queue || []).find(function(e) { return e.id === myEntryId; });
     if (!entry) {
-      // Entry gone — either called or removed
       clearInterval(refreshInterval);
       document.getElementById("conf-icon").textContent = "💈";
       document.getElementById("conf-title").textContent = "It's your turn!";
-      document.getElementById("conf-badge").style.background = "#fef3c7";
       document.getElementById("conf-pos").textContent = "Go!";
       document.getElementById("conf-stats").classList.add("hidden");
       document.getElementById("conf-refresh").classList.add("hidden");
@@ -210,18 +226,15 @@ function refreshPosition() {
     var waitMins = ahead > 0 ? currentDuration + (ahead - 1) * (selectedBarber ? selectedBarber.avgMinutes || 30 : 30) : 0;
     document.getElementById("conf-ahead").textContent = ahead;
     document.getElementById("conf-wait").textContent  = "~" + waitMins + "m";
-    // Update position badge
     var pos = (queue || []).filter(function(e) { return e.status === "waiting" && e.position <= entry.position; }).length;
     document.getElementById("conf-pos").textContent = "#" + pos;
   }).catch(function() {});
 }
 
-// Feature 2: leave queue
 function leaveQueue() {
   if (!myEntryId) return;
   if (!confirm("Are you sure you want to leave the queue?")) return;
-  document.getElementById("btn-leave").disabled = true;
-  document.getElementById("btn-leave").textContent = "Leaving...";
+  document.getElementById("btn-leave").textContent = "Leaving…";
   call({ action: "updateStatus", id: myEntryId, status: "no_show", barberName: "" }).then(function() {
     clearInterval(refreshInterval);
     document.getElementById("conf-icon").textContent = "👋";
@@ -231,7 +244,6 @@ function leaveQueue() {
     document.getElementById("conf-refresh").classList.add("hidden");
     document.getElementById("btn-leave").classList.add("hidden");
   }).catch(function() {
-    document.getElementById("btn-leave").disabled = false;
     document.getElementById("btn-leave").textContent = "Leave Queue";
   });
 }

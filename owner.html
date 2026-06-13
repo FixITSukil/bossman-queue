@@ -3,53 +3,48 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Bossman — Owner View</title>
+<title>Owner View — Bossman</title>
+<link rel="stylesheet" href="brand.css">
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #fafaf9; min-height: 100vh; padding: 1rem; }
+  body { padding: 1rem; }
   .page { max-width: 480px; margin: 0 auto; }
 
-  /* Header */
   .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
-  .header h1 { font-size: 1.3rem; font-weight: 700; color: #1c1917; }
-  .header p  { font-size: 0.8rem; color: #a8a29e; margin-top: 0.1rem; }
-  .refresh-btn { background: #f5f5f4; border: none; border-radius: 0.6rem; padding: 0.45rem 0.75rem; font-size: 0.8rem; color: #78716c; cursor: pointer; font-weight: 500; }
-  .refresh-btn:active { background: #e7e5e4; }
+  .header h1 { font-family: var(--serif); font-size: 1.3rem; font-weight: 700; color: var(--cream); }
+  .header p  { font-size: 0.72rem; color: var(--cream-dim); margin-top: 0.15rem; letter-spacing: 0.05em; }
+  .refresh-btn { background: var(--moss); border: 1px solid var(--line); border-radius: 0.6rem; padding: 0.5rem 0.8rem; font-size: 0.8rem; color: var(--gold); cursor: pointer; font-weight: 500; font-family: var(--sans); }
+  .refresh-btn:active { background: var(--fern); }
 
-  /* Summary bar */
   .summary { display: flex; gap: 0.75rem; margin-bottom: 1rem; }
-  .sum-card { flex: 1; background: #fff; border-radius: 0.75rem; box-shadow: 0 1px 6px rgba(0,0,0,0.06); padding: 0.75rem; text-align: center; }
-  .sum-val { font-size: 1.5rem; font-weight: 800; color: #d97706; }
-  .sum-label { font-size: 0.7rem; color: #78716c; margin-top: 0.1rem; }
+  .sum-card { flex: 1; background: var(--moss); border: 1px solid var(--line); border-radius: 0.75rem; box-shadow: var(--shadow); padding: 0.85rem; text-align: center; }
+  .sum-val { font-family: var(--serif); font-size: 1.6rem; font-weight: 800; color: var(--gold); }
+  .sum-label { font-size: 0.66rem; color: var(--cream-dim); margin-top: 0.15rem; letter-spacing: 0.05em; text-transform: uppercase; }
 
-  /* Barber columns */
   .barbers { display: flex; flex-direction: column; gap: 1rem; }
-  .barber-card { background: #fff; border-radius: 1rem; box-shadow: 0 2px 10px rgba(0,0,0,0.07); overflow: hidden; }
-  .barber-header { padding: 0.9rem 1rem; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #f5f5f4; }
-  .barber-name { font-size: 1rem; font-weight: 700; color: #1c1917; }
-  .barber-meta { font-size: 0.78rem; color: #78716c; margin-top: 0.1rem; }
-  .status-pill { font-size: 0.72rem; font-weight: 600; padding: 0.25rem 0.65rem; border-radius: 999px; }
-  .pill-active   { background: #dcfce7; color: #166534; }
-  .pill-inactive { background: #f5f5f4; color: #78716c; }
-  .pill-busy     { background: #fef3c7; color: #92400e; }
+  .barber-card { background: var(--moss); border: 1px solid var(--line); border-radius: 1rem; box-shadow: var(--shadow); overflow: hidden; }
+  .barber-header { padding: 0.95rem 1rem; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); }
+  .barber-name { font-family: var(--serif); font-size: 1.05rem; font-weight: 700; color: var(--cream); }
+  .barber-meta { font-size: 0.75rem; color: var(--cream-dim); margin-top: 0.15rem; letter-spacing: 0.02em; }
+  .status-pill { font-size: 0.7rem; font-weight: 600; padding: 0.28rem 0.7rem; border-radius: 999px; letter-spacing: 0.03em; }
+  .pill-active   { background: rgba(126,126,56,0.25); color: var(--gold-bright); }
+  .pill-inactive { background: var(--pine); color: var(--cream-dim); }
+  .pill-busy     { background: var(--gold); color: var(--pine); }
 
-  /* Currently serving */
-  .serving-row { background: #fffbeb; padding: 0.65rem 1rem; display: flex; align-items: center; gap: 0.6rem; border-bottom: 1px solid #fef3c7; }
-  .serving-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #d97706; min-width: 3.5rem; }
-  .serving-name  { font-size: 0.9rem; font-weight: 600; color: #1c1917; }
-  .serving-phone { font-size: 0.75rem; color: #78716c; }
+  .serving-row { background: rgba(201,167,106,0.1); padding: 0.7rem 1rem; display: flex; align-items: center; gap: 0.6rem; border-bottom: 1px solid var(--line); }
+  .serving-label { font-size: 0.66rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--gold); min-width: 3rem; }
+  .serving-name  { font-size: 0.9rem; font-weight: 600; color: var(--cream); }
+  .serving-phone { font-size: 0.74rem; color: var(--cream-dim); }
 
-  /* Queue list */
   .queue-rows { padding: 0.4rem 0; }
   .queue-row { display: flex; align-items: center; gap: 0.65rem; padding: 0.55rem 1rem; }
-  .queue-row:not(:last-child) { border-bottom: 1px solid #fafaf9; }
-  .q-num  { width: 1.6rem; height: 1.6rem; border-radius: 50%; background: #f5f5f4; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; color: #78716c; flex-shrink: 0; }
-  .q-name  { font-size: 0.88rem; font-weight: 600; color: #1c1917; }
-  .q-phone { font-size: 0.75rem; color: #a8a29e; }
-  .q-wait  { margin-left: auto; font-size: 0.72rem; color: #a8a29e; white-space: nowrap; }
+  .queue-row:not(:last-child) { border-bottom: 1px solid rgba(233,221,193,0.06); }
+  .q-num  { width: 1.6rem; height: 1.6rem; border-radius: 50%; background: var(--pine); border: 1px solid var(--fern); display: flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 700; color: var(--gold); flex-shrink: 0; }
+  .q-name  { font-size: 0.86rem; font-weight: 600; color: var(--cream); }
+  .q-phone { font-size: 0.73rem; color: var(--cream-dim); }
+  .q-wait  { margin-left: auto; font-size: 0.72rem; color: var(--cream-dim); white-space: nowrap; }
 
-  .empty-queue { padding: 1rem; text-align: center; color: #d6d3d1; font-size: 0.85rem; }
-  .refresh-note { text-align: center; font-size: 0.7rem; color: #d6d3d1; padding: 1rem 0 0.5rem; }
+  .empty-queue { padding: 1rem; text-align: center; color: var(--cream-dim); opacity: 0.6; font-size: 0.85rem; }
+  .refresh-note { text-align: center; font-size: 0.68rem; color: var(--cream-dim); opacity: 0.5; padding: 1rem 0 0.5rem; letter-spacing: 0.05em; }
 </style>
 </head>
 <body>
@@ -57,29 +52,20 @@
 
   <div class="header">
     <div>
-      <h1>✂️ Bossman — Owner</h1>
-      <p id="last-refresh">Loading...</p>
+      <h1>Bossman — Owner</h1>
+      <p id="last-refresh">Loading…</p>
     </div>
     <button class="refresh-btn" onclick="loadAll()">↻ Refresh</button>
   </div>
 
   <div class="summary">
-    <div class="sum-card">
-      <div class="sum-val" id="sum-total">–</div>
-      <div class="sum-label">total waiting</div>
-    </div>
-    <div class="sum-card">
-      <div class="sum-val" id="sum-serving">–</div>
-      <div class="sum-label">being served</div>
-    </div>
-    <div class="sum-card">
-      <div class="sum-val" id="sum-active">–</div>
-      <div class="sum-label">barbers active</div>
-    </div>
+    <div class="sum-card"><div class="sum-val" id="sum-total">–</div><div class="sum-label">total waiting</div></div>
+    <div class="sum-card"><div class="sum-val" id="sum-serving">–</div><div class="sum-label">being served</div></div>
+    <div class="sum-card"><div class="sum-val" id="sum-active">–</div><div class="sum-label">barbers active</div></div>
   </div>
 
   <div class="barbers" id="barbers-container">
-    <p style="text-align:center;color:#a8a29e;padding:2rem">Loading...</p>
+    <p style="text-align:center;color:var(--cream-dim);padding:2rem">Loading…</p>
   </div>
 
   <p class="refresh-note">Auto-refreshes every 30 seconds</p>
@@ -95,37 +81,20 @@ function call(params) {
 }
 
 function loadAll() {
-  call({ action: "getBarbers" }).then(function(allBarbers) {
-    allBarbers = allBarbers || [];
+  call({ action: "getAllBarbers" }).then(function(all) {
+    all = all || [];
     var results = {};
-    var done = 0;
-
-    // Also fetch inactive barbers via all barbers endpoint — we show them as inactive
-    call({ action: "getAllBarbers" }).then(function(all) {
-      all = all || allBarbers;
-      var pending = all.length;
-      if (pending === 0) { render(all, {}); return; }
-      all.forEach(function(b) {
-        call({ action: "getQueue", barberId: b.id }).then(function(q) {
-          results[b.id] = q || [];
-          pending--;
-          if (pending === 0) render(all, results);
-        }).catch(function() { pending--; if (pending === 0) render(all, results); });
-      });
-    }).catch(function() {
-      // fallback: use active only
-      var pending = allBarbers.length;
-      if (pending === 0) { render(allBarbers, {}); return; }
-      allBarbers.forEach(function(b) {
-        call({ action: "getQueue", barberId: b.id }).then(function(q) {
-          results[b.id] = q || [];
-          pending--;
-          if (pending === 0) render(allBarbers, results);
-        }).catch(function() { pending--; if (pending === 0) render(allBarbers, results); });
-      });
+    var pending = all.length;
+    if (pending === 0) { render([], {}); return; }
+    all.forEach(function(b) {
+      call({ action: "getQueue", barberId: b.id }).then(function(q) {
+        results[b.id] = q || [];
+        pending--;
+        if (pending === 0) render(all, results);
+      }).catch(function() { pending--; if (pending === 0) render(all, results); });
     });
   }).catch(function() {
-    document.getElementById("barbers-container").innerHTML = "<p style='text-align:center;color:#ef4444;padding:2rem'>Failed to load. Please refresh.</p>";
+    document.getElementById("barbers-container").innerHTML = "<p style='text-align:center;color:#e88;padding:2rem'>Failed to load. Please refresh.</p>";
   });
 }
 
@@ -133,10 +102,7 @@ function render(barbers, queues) {
   var now = new Date();
   document.getElementById("last-refresh").textContent = "Updated " + now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
-  var totalWaiting = 0;
-  var totalServing = 0;
-  var totalActive  = 0;
-
+  var totalWaiting = 0, totalServing = 0, totalActive = 0;
   var html = "";
   barbers.forEach(function(b) {
     var queue   = queues[b.id] || [];
@@ -144,27 +110,22 @@ function render(barbers, queues) {
     var serving = queue.find(function(e)  { return e.status === "called"; });
 
     totalWaiting += waiting.length;
-    if (serving)   totalServing++;
+    if (serving)    totalServing++;
     if (b.isActive) totalActive++;
 
     var pillClass = !b.isActive ? "pill-inactive" : serving ? "pill-busy" : "pill-active";
     var pillText  = !b.isActive ? "Inactive" : serving ? "Cutting" : "Active";
-
     var currentDuration = (serving && serving.durationMinutes) ? serving.durationMinutes : (b.avgMinutes || 30);
 
-    html += '<div class="barber-card">';
-    html += '<div class="barber-header">';
+    html += '<div class="barber-card"><div class="barber-header">';
     html +=   '<div><div class="barber-name">' + b.name + '</div>';
     html +=   '<div class="barber-meta">' + waiting.length + ' waiting · ~' + (waiting.length * (b.avgMinutes || 30)) + ' min total</div></div>';
-    html +=   '<span class="status-pill ' + pillClass + '">' + pillText + '</span>';
-    html += '</div>';
+    html +=   '<span class="status-pill ' + pillClass + '">' + pillText + '</span></div>';
 
     if (serving) {
-      html += '<div class="serving-row">';
-      html +=   '<span class="serving-label">Now</span>';
+      html += '<div class="serving-row"><span class="serving-label">Now</span>';
       html +=   '<div><div class="serving-name">' + serving.customerName + '</div>';
-      html +=   '<div class="serving-phone">' + serving.phone + '</div></div>';
-      html += '</div>';
+      html +=   '<div class="serving-phone">' + serving.phone + '</div></div></div>';
     }
 
     html += '<div class="queue-rows">';
@@ -173,12 +134,10 @@ function render(barbers, queues) {
     } else {
       waiting.forEach(function(entry, i) {
         var waitMins = currentDuration + i * (b.avgMinutes || 30);
-        html += '<div class="queue-row">';
-        html +=   '<div class="q-num">' + (i + 1) + '</div>';
+        html += '<div class="queue-row"><div class="q-num">' + (i + 1) + '</div>';
         html +=   '<div><div class="q-name">' + entry.customerName + '</div>';
         html +=   '<div class="q-phone">' + entry.phone + '</div></div>';
-        html +=   '<div class="q-wait">~' + waitMins + ' min</div>';
-        html += '</div>';
+        html +=   '<div class="q-wait">~' + waitMins + ' min</div></div>';
       });
     }
     html += '</div></div>';
