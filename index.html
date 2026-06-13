@@ -161,7 +161,7 @@ function resumeEntry() {
   call({ action: "getQueue", barberId: saved.id }).then(function(queue) {
     var entry = (queue || []).find(function(e) { return e.id === saved.entryId; });
     if (!entry) { clearEntry(); loadBarbers(); return; }
-    selectedBarber = { id: saved.id, name: saved.name, avgMinutes: saved.avgMinutes };
+    selectedBarber = { id: saved.id, name: saved.name, avgMinutes: AVG };
     myEntryId  = saved.entryId;
     myBarberId = saved.id;
     document.getElementById("conf-barber").textContent = saved.name;
@@ -191,9 +191,12 @@ function showForm(barber) {
   document.getElementById("inp-phone").value = "";
 }
 
+var AVG = 35; // flat average wait estimate per customer (minutes)
+
 function loadBarbers() {
   call({ action: "getBarbers" }).then(function(data) {
     barbers = data || [];
+    barbers.forEach(function(b) { b.avgMinutes = AVG; });
     var done = 0;
     if (barbers.length === 0) { renderBarbers(); return; }
     barbers.forEach(function(b) {

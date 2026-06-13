@@ -143,7 +143,7 @@ function render(barbers, queues) {
 
     var pillClass = !b.isActive ? "pill-inactive" : serving ? "pill-busy" : "pill-active";
     var pillText  = !b.isActive ? "Inactive" : serving ? "Cutting" : "Active";
-    var avg = b.avgMinutes || 30;
+    var avg = 35; // flat average wait estimate per customer
     var remaining = remainingCut(serving, avg);
 
     html += '<div class="barber-card"><div class="barber-header">';

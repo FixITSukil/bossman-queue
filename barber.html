@@ -162,6 +162,7 @@ function init() {
       return;
     }
     barber = b;
+    barber.avgMinutes = 35; // flat average wait estimate per customer
     document.getElementById("barber-name").textContent = b.name;
     updateToggleBtn();
     loadQueue();
