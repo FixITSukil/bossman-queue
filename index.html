@@ -8,6 +8,7 @@
 <style>
   body { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1.5rem; }
   .wrap { width: 100%; max-width: 380px; }
+  .topclock { position: fixed; top: 0; left: 0; right: 0; text-align: center; padding: 0.5rem; font-size: 0.78rem; letter-spacing: 0.1em; color: var(--gold); background: rgba(10,31,20,0.85); backdrop-filter: blur(6px); z-index: 50; border-bottom: 1px solid var(--line); }
   .brand .logo { width: 210px; border-radius: 0.5rem; }
   .brand .sub { font-size: 0.82rem; margin-top: 1rem; }
 
@@ -57,6 +58,7 @@
 </style>
 </head>
 <body>
+<div class="topclock" id="clock">🕐 --:--:-- MYT</div>
 <div class="wrap">
 
 <!-- Step 1: Pick barber -->
@@ -132,14 +134,44 @@ function remainingCut(serving, avg) {
   return Math.max(0, Math.round(duration - elapsedMin));
 }
 
-// Live Malaysia clock
+// Live Malaysia clock (updates both the top bar and confirmation screen)
 function tickClock() {
-  var el = document.getElementById("conf-clock");
-  if (!el) return;
   var t = new Date().toLocaleTimeString("en-GB", { timeZone: "Asia/Kuala_Lumpur", hour: "2-digit", minute: "2-digit", second: "2-digit" });
-  el.textContent = "🕐 " + t + " MYT";
+  var label = "🕐 " + t + " MYT";
+  var top = document.getElementById("clock");
+  var conf = document.getElementById("conf-clock");
+  if (top)  top.textContent  = label;
+  if (conf) conf.textContent = label;
 }
 setInterval(tickClock, 1000);
+tickClock();
+
+var STORE_KEY = "bossman_queue";
+function saveEntry(barber) {
+  localStorage.setItem(STORE_KEY, JSON.stringify({ entryId: myEntryId, id: barber.id, name: barber.name, avgMinutes: barber.avgMinutes || 30 }));
+}
+function clearEntry() { localStorage.removeItem(STORE_KEY); }
+
+// On load, if the customer already joined earlier, jump back to their status
+function resumeEntry() {
+  var raw = localStorage.getItem(STORE_KEY);
+  if (!raw) { loadBarbers(); return; }
+  var saved;
+  try { saved = JSON.parse(raw); } catch (e) { clearEntry(); loadBarbers(); return; }
+  call({ action: "getQueue", barberId: saved.id }).then(function(queue) {
+    var entry = (queue || []).find(function(e) { return e.id === saved.entryId; });
+    if (!entry) { clearEntry(); loadBarbers(); return; }
+    selectedBarber = { id: saved.id, name: saved.name, avgMinutes: saved.avgMinutes };
+    myEntryId  = saved.entryId;
+    myBarberId = saved.id;
+    document.getElementById("conf-barber").textContent = saved.name;
+    document.getElementById("step-pick").classList.add("hidden");
+    document.getElementById("step-done").classList.remove("hidden");
+    refreshPosition();
+    if (refreshInterval) clearInterval(refreshInterval);
+    refreshInterval = setInterval(refreshPosition, 30000);
+  }).catch(function() { loadBarbers(); });
+}
 
 function showPick() {
   document.getElementById("step-pick").classList.remove("hidden");
@@ -207,6 +239,7 @@ function joinQueue() {
       if (!res || res.error) { errEl.textContent = res.error || "Something went wrong."; errEl.classList.remove("hidden"); return; }
       myEntryId  = res.id;
       myBarberId = selectedBarber.id;
+      saveEntry(selectedBarber);
       document.getElementById("conf-barber").textContent = selectedBarber.name;
       document.getElementById("conf-pos").textContent    = "#" + res.position;
       document.getElementById("conf-ahead").textContent  = res.ahead;
@@ -230,6 +263,7 @@ function refreshPosition() {
     var entry = (queue || []).find(function(e) { return e.id === myEntryId; });
     if (!entry) {
       clearInterval(refreshInterval);
+      clearEntry();
       document.getElementById("conf-icon").textContent = "💈";
       document.getElementById("conf-title").textContent = "It's your turn!";
       document.getElementById("conf-pos").textContent = "Go!";
@@ -255,18 +289,21 @@ function leaveQueue() {
   document.getElementById("btn-leave").textContent = "Leaving…";
   call({ action: "updateStatus", id: myEntryId, status: "no_show", barberName: "" }).then(function() {
     clearInterval(refreshInterval);
+    clearEntry();
     document.getElementById("conf-icon").textContent = "👋";
     document.getElementById("conf-title").textContent = "You've left the queue";
     document.getElementById("conf-badge").classList.add("hidden");
     document.getElementById("conf-stats").classList.add("hidden");
     document.getElementById("conf-refresh").classList.add("hidden");
-    document.getElementById("btn-leave").classList.add("hidden");
+    var b = document.getElementById("btn-leave");
+    b.textContent = "← Choose a barber";
+    b.onclick = function() { location.reload(); };
   }).catch(function() {
     document.getElementById("btn-leave").textContent = "Leave Queue";
   });
 }
 
-loadBarbers();
+resumeEntry();
 </script>
 </body>
 </html>

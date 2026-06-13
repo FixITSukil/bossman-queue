@@ -26,7 +26,7 @@
   .serving-name { font-family: var(--serif); font-size: 1.3rem; font-weight: 700; color: var(--pine); }
   .serving-phone { font-size: 0.85rem; color: rgba(14,40,24,0.7); margin-top: 0.1rem; }
   .icon-btns { display: flex; gap: 0.5rem; }
-  .icon-btn { background: var(--pine); border: none; border-radius: 0.6rem; padding: 0.5rem 0.6rem; cursor: pointer; font-size: 1.1rem; line-height: 1; }
+  .icon-btn { background: var(--pine); border: none; border-radius: 0.6rem; padding: 0.5rem 0.6rem; cursor: pointer; font-size: 1.1rem; line-height: 1; text-decoration: none; display: inline-flex; align-items: center; }
   /* Modal */
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.65); display: flex; align-items: center; justify-content: center; padding: 1.5rem; z-index: 100; }
   .modal { background: var(--moss); border: 1px solid var(--line); border-radius: 1rem; padding: 1.5rem; width: 100%; max-width: 300px; }
@@ -88,10 +88,13 @@
         <div class="serving-phone" id="serving-phone">-</div>
       </div>
       <div class="icon-btns">
-        <button class="icon-btn" onclick="markStatus(servingId, 'done')">✅</button>
-        <button class="icon-btn" onclick="markStatus(servingId, 'no_show')">❌</button>
+        <a class="icon-btn" id="serving-call" href="#" title="Call">📞</a>
+        <a class="icon-btn" id="serving-wa" href="#" target="_blank" title="WhatsApp">💬</a>
+        <button class="icon-btn" onclick="markStatus(servingId, 'done')" title="Done">✅</button>
+        <button class="icon-btn" onclick="markStatus(servingId, 'no_show')" title="No show">❌</button>
       </div>
     </div>
+    <p style="font-size:0.72rem;color:rgba(14,40,24,0.7);margin-top:0.6rem;letter-spacing:0.02em;">Not here? Tap 📞 to call or 💬 to WhatsApp them.</p>
   </div>
 
   <div class="modal-overlay hidden" id="duration-modal">
@@ -190,6 +193,9 @@ function renderQueue(queue) {
     servingId = serving.id;
     document.getElementById("serving-name").textContent  = serving.customerName;
     document.getElementById("serving-phone").textContent = serving.phone;
+    var digits = String(serving.phone).replace(/\D/g, "");
+    document.getElementById("serving-call").href = "tel:" + digits;
+    document.getElementById("serving-wa").href   = "https://wa.me/" + digits;
     servingSection.classList.remove("hidden");
   } else {
     servingId = null;
