@@ -98,24 +98,35 @@ function tickClock() {
 setInterval(tickClock, 1000);
 
 function loadAll() {
-  call({ action: "getAllBarbers" }).then(function(all) {
-    all = all || [];
-    var results = {};
-    var pending = all.length;
-    if (pending === 0) { render([], {}); return; }
-    all.forEach(function(b) {
-      call({ action: "getQueue", barberId: b.id }).then(function(q) {
-        results[b.id] = q || [];
-        pending--;
-        if (pending === 0) render(all, results);
-      }).catch(function() { pending--; if (pending === 0) render(all, results); });
+  // Prefer getAllBarbers (shows inactive too); fall back to getBarbers if the
+  // script hasn't been redeployed with that endpoint yet.
+  call({ action: "getAllBarbers" })
+    .then(function(all) {
+      if (!Array.isArray(all)) throw new Error("use-fallback");
+      return all;
+    })
+    .catch(function() {
+      return call({ action: "getBarbers" }).then(function(a) { return Array.isArray(a) ? a : []; });
+    })
+    .then(function(all) {
+      var results = {};
+      var pending = all.length;
+      if (pending === 0) { render([], {}); return; }
+      all.forEach(function(b) {
+        call({ action: "getQueue", barberId: b.id }).then(function(q) {
+          results[b.id] = Array.isArray(q) ? q : [];
+          pending--;
+          if (pending === 0) render(all, results);
+        }).catch(function() { pending--; if (pending === 0) render(all, results); });
+      });
+    })
+    .catch(function() {
+      document.getElementById("barbers-container").innerHTML = "<p style='text-align:center;color:#e88;padding:2rem'>Failed to load. Please refresh.</p>";
     });
-  }).catch(function() {
-    document.getElementById("barbers-container").innerHTML = "<p style='text-align:center;color:#e88;padding:2rem'>Failed to load. Please refresh.</p>";
-  });
 }
 
 function render(barbers, queues) {
+ try {
   var now = new Date();
   document.getElementById("last-refresh").textContent = "Updated " + now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
@@ -166,6 +177,9 @@ function render(barbers, queues) {
   document.getElementById("sum-total").textContent   = totalWaiting;
   document.getElementById("sum-serving").textContent = totalServing;
   document.getElementById("sum-active").textContent  = totalActive;
+ } catch (err) {
+  document.getElementById("barbers-container").innerHTML = "<p style='text-align:center;color:#e88;padding:2rem'>Display error. Please refresh.</p>";
+ }
 }
 
 loadAll();
