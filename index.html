@@ -8,9 +8,8 @@
 <style>
   body { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1.5rem; }
   .wrap { width: 100%; max-width: 380px; }
-  .brand .wordmark { font-size: 2rem; }
-  .brand .tagline { font-size: 0.7rem; }
-  .brand .sub { font-size: 0.8rem; }
+  .brand .logo { width: 210px; border-radius: 0.5rem; }
+  .brand .sub { font-size: 0.82rem; margin-top: 1rem; }
 
   .card {
     background: var(--moss); border: 1px solid var(--line); border-radius: 1rem;
@@ -63,9 +62,7 @@
 <!-- Step 1: Pick barber -->
 <div id="step-pick">
   <div class="brand">
-    <img src="logo.png" alt="Bossman" class="logo" onerror="this.style.display='none'">
-    <div class="wordmark">Bossman</div>
-    <div class="tagline">Gentleman's Club</div>
+    <img src="logo.png" alt="Bossman Gentleman's Club Barbershop" class="logo" onerror="this.style.display='none'">
     <div class="sub">Choose your barber to join the queue</div>
   </div>
   <div class="stack" id="barber-list">
