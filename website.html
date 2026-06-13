@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bossman — Gentleman's Club Barbershop</title>
+<meta name="description" content="Bossman Gentleman's Club Barbershop — premium cuts, royal shaves, facials & grooming for the modern gentleman. Estd 2024.">
+<link rel="icon" href="logo.png">
+<link rel="stylesheet" href="brand.css">
+<style>
+  html { scroll-behavior: smooth; }
+  body { background:
+    radial-gradient(1200px 600px at 50% -10%, rgba(201,167,106,0.10), transparent 60%),
+    var(--forest);
+  }
+  .container { max-width: 1080px; margin: 0 auto; padding: 0 1.5rem; }
+  section { padding: 4.5rem 0; }
+  .eyebrow { text-align: center; color: var(--gold); letter-spacing: 0.35em; text-transform: uppercase; font-size: 0.72rem; font-weight: 600; }
+  .section-title { text-align: center; font-family: var(--serif); font-weight: 800; color: var(--cream); font-size: clamp(1.8rem, 4vw, 2.6rem); margin-top: 0.6rem; letter-spacing: 0.02em; }
+  .rule { width: 64px; height: 2px; background: var(--gold); margin: 1.1rem auto 0; opacity: 0.8; }
+  .lead { text-align: center; color: var(--cream-dim); max-width: 560px; margin: 1.2rem auto 0; line-height: 1.7; font-size: 0.95rem; }
+
+  /* NAV */
+  nav { position: sticky; top: 0; z-index: 50; background: rgba(10,31,20,0.8); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+  .nav-inner { max-width: 1080px; margin: 0 auto; padding: 0.7rem 1.5rem; display: flex; align-items: center; justify-content: space-between; }
+  .nav-brand { display: flex; align-items: center; gap: 0.6rem; }
+  .nav-brand img { width: 34px; height: 34px; border-radius: 4px; }
+  .nav-brand span { font-family: var(--serif); font-weight: 700; letter-spacing: 0.18em; color: var(--cream); text-transform: uppercase; font-size: 0.95rem; }
+  .nav-links { display: flex; gap: 1.5rem; align-items: center; }
+  .nav-links a { color: var(--cream-dim); text-decoration: none; font-size: 0.82rem; letter-spacing: 0.08em; text-transform: uppercase; transition: color 0.15s; }
+  .nav-links a:hover { color: var(--gold); }
+  .nav-cta { background: var(--gold); color: var(--pine) !important; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600; }
+  .nav-cta:hover { background: var(--gold-bright); color: var(--pine) !important; }
+  @media (max-width: 720px) { .nav-links a:not(.nav-cta) { display: none; } }
+
+  /* HERO */
+  .hero { min-height: 92vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 3rem 1.5rem; position: relative; }
+  .hero-frame { border: 1px solid var(--line); border-radius: 4px; padding: 2.5rem 2rem; position: relative; max-width: 560px; width: 100%; }
+  .hero-frame::before, .hero-frame::after { content: ""; position: absolute; width: 26px; height: 26px; border: 2px solid var(--gold); }
+  .hero-frame::before { top: -1px; left: -1px; border-right: none; border-bottom: none; }
+  .hero-frame::after { bottom: -1px; right: -1px; border-left: none; border-top: none; }
+  .hero img { width: 200px; max-width: 60vw; border-radius: 6px; margin-bottom: 1.5rem; }
+  .hero h1 { font-family: var(--serif); font-weight: 800; font-size: clamp(2.4rem, 7vw, 4rem); letter-spacing: 0.22em; color: var(--cream); line-height: 1; margin-left: 0.22em; }
+  .hero .tag { color: var(--gold); letter-spacing: 0.4em; text-transform: uppercase; font-size: clamp(0.6rem, 2vw, 0.8rem); margin-top: 0.9rem; }
+  .hero .estd { color: var(--cream-dim); letter-spacing: 0.3em; font-size: 0.65rem; margin-top: 0.5rem; }
+  .hero p.sub { color: var(--cream-dim); margin-top: 1.5rem; line-height: 1.7; font-size: 0.95rem; }
+  .hero-btns { display: flex; gap: 0.8rem; justify-content: center; margin-top: 1.8rem; flex-wrap: wrap; }
+  .btn-lg { padding: 0.85rem 1.6rem; font-size: 0.85rem; letter-spacing: 0.12em; text-transform: uppercase; text-decoration: none; border-radius: 0.55rem; display: inline-block; }
+  .btn-primary { background: var(--gold); color: var(--pine); font-weight: 600; }
+  .btn-primary:hover { background: var(--gold-bright); }
+  .btn-ghost { border: 1px solid var(--gold); color: var(--gold); }
+  .btn-ghost:hover { background: rgba(201,167,106,0.12); }
+
+  /* PACKAGE CARDS */
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1.25rem; margin-top: 2.5rem; }
+  .pkg { background: var(--moss); border: 1px solid var(--line); border-radius: 1rem; padding: 1.75rem 1.5rem; position: relative; transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s; overflow: hidden; }
+  .pkg:hover { transform: translateY(-5px); border-color: var(--gold); box-shadow: 0 16px 40px rgba(0,0,0,0.4); }
+  .pkg.feature { border-color: var(--gold); }
+  .pkg-tier { font-family: var(--serif); font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--gold); font-size: 1.15rem; }
+  .pkg-price { font-family: var(--serif); font-weight: 800; font-size: 2.2rem; color: var(--cream); margin: 0.4rem 0 1rem; }
+  .pkg-price small { font-size: 0.9rem; color: var(--cream-dim); font-weight: 400; }
+  .pkg ul { list-style: none; }
+  .pkg li { color: var(--cream-dim); font-size: 0.85rem; padding: 0.45rem 0; border-top: 1px solid rgba(233,221,193,0.07); line-height: 1.4; }
+  .pkg li:first-child { border-top: none; }
+  .pkg li::before { content: "✦"; color: var(--gold); margin-right: 0.5rem; font-size: 0.7rem; }
+  .ribbon { position: absolute; top: 0.9rem; right: -2.4rem; background: var(--gold); color: var(--pine); font-size: 0.62rem; font-weight: 700; letter-spacing: 0.1em; padding: 0.25rem 2.5rem; transform: rotate(45deg); text-transform: uppercase; }
+
+  /* PRICE TABLES */
+  .price-wrap { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem 3rem; margin-top: 2.5rem; }
+  .price-block h3 { font-family: var(--serif); color: var(--gold); font-size: 1.1rem; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 0.5rem; padding-bottom: 0.6rem; border-bottom: 1px solid var(--line); }
+  .price-row { display: flex; align-items: baseline; gap: 0.6rem; padding: 0.6rem 0; }
+  .price-row .name { color: var(--cream); font-size: 0.9rem; }
+  .price-row .name small { display: block; color: var(--cream-dim); font-size: 0.72rem; letter-spacing: 0.02em; margin-top: 0.1rem; }
+  .price-row .dots { flex: 1; border-bottom: 1px dotted rgba(233,221,193,0.25); transform: translateY(-4px); }
+  .price-row .amt { color: var(--gold); font-weight: 600; font-family: var(--serif); white-space: nowrap; font-size: 0.95rem; }
+
+  /* FACIAL CARDS */
+  .facials { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.25rem; margin-top: 2.5rem; }
+  .facial { background: var(--moss); border: 1px solid var(--line); border-radius: 1rem; padding: 1.5rem; transition: border-color 0.2s, transform 0.2s; }
+  .facial:hover { border-color: var(--gold); transform: translateY(-4px); }
+  .facial .fname { font-family: var(--serif); color: var(--cream); font-size: 1.1rem; }
+  .facial .fprice { color: var(--gold); font-family: var(--serif); font-weight: 700; font-size: 1.4rem; margin: 0.3rem 0 0.7rem; }
+  .facial p { color: var(--cream-dim); font-size: 0.82rem; line-height: 1.6; }
+
+  /* PROMO */
+  .promo { background: linear-gradient(135deg, var(--gold), var(--gold-bright)); color: var(--pine); text-align: center; padding: 1.5rem; border-radius: 1rem; margin-top: 2.5rem; font-weight: 700; letter-spacing: 0.06em; font-size: clamp(0.85rem, 2.5vw, 1.05rem); }
+
+  /* FOOTER */
+  footer { border-top: 1px solid var(--line); padding: 3.5rem 1.5rem 2.5rem; text-align: center; }
+  footer img { width: 90px; border-radius: 5px; margin-bottom: 1rem; }
+  footer .fbrand { font-family: var(--serif); letter-spacing: 0.2em; color: var(--cream); text-transform: uppercase; font-size: 1.1rem; }
+  footer .ftag { color: var(--gold); letter-spacing: 0.3em; text-transform: uppercase; font-size: 0.66rem; margin-top: 0.4rem; }
+  footer p { color: var(--cream-dim); font-size: 0.82rem; margin-top: 1rem; line-height: 1.7; }
+  footer .copyright { margin-top: 2rem; font-size: 0.7rem; color: var(--cream-dim); opacity: 0.6; letter-spacing: 0.05em; }
+
+  /* Scroll reveal */
+  .reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.7s ease, transform 0.7s ease; }
+  .reveal.in { opacity: 1; transform: none; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <div class="nav-brand"><img src="logo.png" alt="Bossman"><span>Bossman</span></div>
+    <div class="nav-links">
+      <a href="#packages">Packages</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#facials">Facials</a>
+      <a href="#colour">Colour</a>
+      <a href="index.html" class="nav-cta">Join Queue</a>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="hero-frame reveal">
+    <img src="logo.png" alt="Bossman Gentleman's Club Barbershop">
+    <h1>Bossman</h1>
+    <div class="tag">Gentleman's Club Barbershop</div>
+    <div class="estd">— Estd 2024 —</div>
+    <p class="sub">Where the modern gentleman is groomed like royalty.<br>Precision cuts, royal shaves, and indulgent treatments.</p>
+    <div class="hero-btns">
+      <a href="index.html" class="btn-lg btn-primary">Join the Queue</a>
+      <a href="#packages" class="btn-lg btn-ghost">View Services</a>
+    </div>
+  </div>
+</header>
+
+<!-- SIGNATURE PACKAGES -->
+<section id="packages" class="container">
+  <div class="reveal">
+    <div class="eyebrow">Signature Experiences</div>
+    <h2 class="section-title">The Bossman Packages</h2>
+    <div class="rule"></div>
+    <p class="lead">Curated grooming rituals — from a sharp classic cut to the full royal treatment.</p>
+  </div>
+  <div class="grid">
+    <div class="pkg reveal">
+      <div class="pkg-tier">Platinum</div>
+      <div class="pkg-price">RM59</div>
+      <ul>
+        <li>Classic Haircut, tailored to your style</li>
+        <li>Precision Shave, traditional technique</li>
+        <li>Basic Styling with premium products</li>
+      </ul>
+    </div>
+    <div class="pkg reveal">
+      <div class="pkg-tier">Prestige</div>
+      <div class="pkg-price">RM89</div>
+      <ul>
+        <li>Customized Haircut by experienced stylists</li>
+        <li>Deluxe Hot Towel Shave</li>
+        <li>Beard Trim &amp; Styling</li>
+        <li>Soothing Scalp Massage</li>
+      </ul>
+    </div>
+    <div class="pkg feature reveal">
+      <div class="ribbon">Popular</div>
+      <div class="pkg-tier">Diamond</div>
+      <div class="pkg-price">RM119</div>
+      <ul>
+        <li>Customized Signature Haircut</li>
+        <li>Deluxe Hot Towel Shave</li>
+        <li>Beard Trim &amp; Styling</li>
+        <li>Old Money Medi Facial (24K gold)</li>
+      </ul>
+    </div>
+    <div class="pkg feature reveal">
+      <div class="ribbon">Premium</div>
+      <div class="pkg-tier">VIP</div>
+      <div class="pkg-price">RM149</div>
+      <ul>
+        <li>Signature Haircut by our top stylist</li>
+        <li>Premium Hot Towel Shave Experience</li>
+        <li>Premium Styling &amp; blow-dry</li>
+        <li>Scalp Massage</li>
+        <li>Old Money Medi Facial (24K gold)</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- WEDDING -->
+<section id="wedding" class="container">
+  <div class="reveal">
+    <div class="eyebrow">For the Groom</div>
+    <h2 class="section-title">Wedding Day Dapper</h2>
+    <div class="rule"></div>
+    <p class="lead">Glow like gold on your big day. The complete grooming experience, built for the aisle.</p>
+  </div>
+  <div class="grid">
+    <div class="pkg reveal">
+      <div class="pkg-tier">Dapper</div>
+      <div class="pkg-price">RM299</div>
+      <ul>
+        <li>Signature Haircut</li>
+        <li>Premium Shave Experience</li>
+        <li>Groom Me Up Boss! post-shave facial</li>
+        <li>Scalp Massage</li>
+        <li>Waxing &amp; Premium Styling</li>
+      </ul>
+    </div>
+    <div class="pkg feature reveal">
+      <div class="ribbon">Best Value</div>
+      <div class="pkg-tier">Royal</div>
+      <div class="pkg-price">RM399</div>
+      <ul>
+        <li>Everything in Dapper, plus —</li>
+        <li>Royal Premium Shave Experience</li>
+        <li>Keratin Hair Treatment</li>
+        <li>Scalp &amp; Shoulder Massage</li>
+      </ul>
+    </div>
+    <div class="pkg feature reveal">
+      <div class="ribbon">Ultimate</div>
+      <div class="pkg-tier">Imperial</div>
+      <div class="pkg-price">RM499</div>
+      <ul>
+        <li>Everything in Royal, plus —</li>
+        <li>Whitening Premium 6-Step Gold Facial</li>
+        <li>Bossman-icure &amp; Pedicure</li>
+        <li>Signature Haircut w/ complimentary Hair Art</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- À LA CARTE PRICING -->
+<section id="pricing" class="container">
+  <div class="reveal">
+    <div class="eyebrow">À La Carte</div>
+    <h2 class="section-title">Grooming Essentials</h2>
+    <div class="rule"></div>
+  </div>
+  <div class="price-wrap reveal">
+    <div class="price-block">
+      <h3>Cuts &amp; Shaves</h3>
+      <div class="price-row"><span class="name">Haircut</span><span class="dots"></span><span class="amt">RM39</span></div>
+      <div class="price-row"><span class="name">Hair Cut &amp; Wash <small>Below shoulder</small></span><span class="dots"></span><span class="amt">RM59</span></div>
+      <div class="price-row"><span class="name">Full Head Shave</span><span class="dots"></span><span class="amt">RM49</span></div>
+      <div class="price-row"><span class="name">Shave / Beard Trim</span><span class="dots"></span><span class="amt">RM29</span></div>
+      <div class="price-row"><span class="name">Clean Shave</span><span class="dots"></span><span class="amt">RM39</span></div>
+      <div class="price-row"><span class="name">Boss Royal Shave</span><span class="dots"></span><span class="amt">RM39</span></div>
+      <div class="price-row"><span class="name">BossBaby <small>Kids cut</small></span><span class="dots"></span><span class="amt">RM29</span></div>
+    </div>
+    <div class="price-block">
+      <h3>Waxing &amp; Extras</h3>
+      <div class="price-row"><span class="name">Waxing <small>Forehead, eyebrows, nose, cheeks, ears</small></span><span class="dots"></span><span class="amt">RM19</span></div>
+      <div class="price-row"><span class="name">Full Face Wax</span><span class="dots"></span><span class="amt">RM89</span></div>
+      <div class="price-row"><span class="name">Eyebrow Trim / Threading</span><span class="dots"></span><span class="amt">RM9</span></div>
+      <div class="price-row"><span class="name">Relaxing Scalp Massage</span><span class="dots"></span><span class="amt">RM39</span></div>
+      <div class="price-row"><span class="name">Bossman-icure / Pedicure</span><span class="dots"></span><span class="amt">RM59–89</span></div>
+      <div class="price-row"><span class="name">Bossman Hair Perm</span><span class="dots"></span><span class="amt">RM199–300</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- FACIALS -->
+<section id="facials" class="container">
+  <div class="reveal">
+    <div class="eyebrow">Hot Towel Facial Treatments</div>
+    <h2 class="section-title">Facial Treatments</h2>
+    <div class="rule"></div>
+    <p class="lead">All facial treatments include a relaxing face massage.</p>
+  </div>
+  <div class="facials">
+    <div class="facial reveal">
+      <div class="fname">Basic Facial</div>
+      <div class="fprice">RM49</div>
+      <p>Refresh and rejuvenate with a peel-off mask — a quick yet effective treatment to cleanse, exfoliate and hydrate.</p>
+    </div>
+    <div class="facial reveal">
+      <div class="fname">Old Money Medi Facial</div>
+      <div class="fprice">RM89</div>
+      <p>That old-money glow using EMS hot &amp; cool settings, a 24K gold mask, vitamin C &amp; retinol. Feel young &amp; rich.</p>
+    </div>
+    <div class="facial reveal">
+      <div class="fname">Whitening Premium 6-Step Gold Facial</div>
+      <div class="fprice">RM129</div>
+      <p>Deep cleansing, exfoliation and gold-infused hydration for a flawless, luminous, camera-ready glow.</p>
+    </div>
+  </div>
+</section>
+
+<!-- COLOUR & TREATMENTS -->
+<section id="colour" class="container">
+  <div class="reveal">
+    <div class="eyebrow">Colour &amp; Treatments</div>
+    <h2 class="section-title">Hair Colouring &amp; Treatments</h2>
+    <div class="rule"></div>
+    <p class="lead">Prices vary depending on the length of hair.</p>
+  </div>
+  <div class="price-wrap reveal">
+    <div class="price-block">
+      <h3>Colouring</h3>
+      <div class="price-row"><span class="name">Basic Beard Colouring <small>One colour</small></span><span class="dots"></span><span class="amt">RM59</span></div>
+      <div class="price-row"><span class="name">Regrowth Touch-Up <small>Roots only</small></span><span class="dots"></span><span class="amt">RM59</span></div>
+      <div class="price-row"><span class="name">Highlights &amp; Low Lights</span><span class="dots"></span><span class="amt">RM89</span></div>
+      <div class="price-row"><span class="name">Basic Hair Colouring <small>One colour</small></span><span class="dots"></span><span class="amt">RM89</span></div>
+    </div>
+    <div class="price-block">
+      <h3>Treatments</h3>
+      <div class="price-row"><span class="name">Keratin Hair Treatment</span><span class="dots"></span><span class="amt">RM79</span></div>
+      <div class="price-row"><span class="name">Dry &amp; Frizzy Hair <small>Damage control</small></span><span class="dots"></span><span class="amt">RM79</span></div>
+      <div class="price-row"><span class="name">Colour Restoration</span><span class="dots"></span><span class="amt">RM79</span></div>
+      <div class="price-row"><span class="name">Ayurvedic Hair Treatment <small>Free head massage</small></span><span class="dots"></span><span class="amt">RM89</span></div>
+    </div>
+    <div class="price-block">
+      <h3>Keratin Straightening</h3>
+      <div class="price-row"><span class="name">Short Hair</span><span class="dots"></span><span class="amt">RM199</span></div>
+      <div class="price-row"><span class="name">Medium Hair</span><span class="dots"></span><span class="amt">RM249</span></div>
+      <div class="price-row"><span class="name">Long Hair</span><span class="dots"></span><span class="amt">RM289</span></div>
+    </div>
+    <div class="price-block">
+      <h3>Rebonding Straightening</h3>
+      <div class="price-row"><span class="name">Short Hair</span><span class="dots"></span><span class="amt">RM129</span></div>
+      <div class="price-row"><span class="name">Medium Hair</span><span class="dots"></span><span class="amt">RM189</span></div>
+      <div class="price-row"><span class="name">Long Hair</span><span class="dots"></span><span class="amt">RM209</span></div>
+    </div>
+  </div>
+
+  <div class="promo reveal">★ Front Liners, Students &amp; Senior Citizens get 15% OFF ★</div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <img src="logo.png" alt="Bossman">
+  <div class="fbrand">Bossman</div>
+  <div class="ftag">Gentleman's Club Barbershop</div>
+  <p>Walk in, scan, and join the queue — no waiting around.<br>The chair is ready when you are.</p>
+  <div class="hero-btns" style="margin-top:1.5rem">
+    <a href="index.html" class="btn-lg btn-primary">Join the Queue</a>
+  </div>
+  <div class="copyright">© 2024 Bossman Gentleman's Club Barbershop · Estd 2024</div>
+</footer>
+
+<script>
+  // Scroll reveal
+  var io = new IntersectionObserver(function(entries) {
+    entries.forEach(function(e) { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } });
+  }, { threshold: 0.12 });
+  document.querySelectorAll(".reveal").forEach(function(el) { io.observe(el); });
+</script>
+</body>
+</html>
