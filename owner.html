@@ -95,14 +95,8 @@
 
 </div>
 
+<script src="api.js"></script>
 <script>
-var API = "https://script.google.com/macros/s/AKfycbzbQwHdDmrGWLWMI6yST7-zCb69k1F-znD93NMsq6sTs0gSlygR51c9ykPPZysiygWH/exec";
-
-function call(params) {
-  var qs = Object.keys(params).map(function(k) { return k + "=" + encodeURIComponent(params[k]); }).join("&");
-  return fetch(API + "?" + qs).then(function(r) { return r.json(); });
-}
-
 function remainingCut(serving, avg) {
   if (!serving) return 0;
   var duration = serving.durationMinutes || avg;

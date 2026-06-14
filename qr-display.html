@@ -30,17 +30,12 @@
   <div class="countdown">Code refreshes in <b id="count">--:--</b></div>
   <p class="note">This code changes every 30 minutes and only works in-store. Please scan it here at the counter — screenshots will not work later.</p>
 
+<script src="api.js"></script>
 <script>
-var API  = "https://script.google.com/macros/s/AKfycbzbQwHdDmrGWLWMI6yST7-zCb69k1F-znD93NMsq6sTs0gSlygR51c9ykPPZysiygWH/exec";
 var SITE = "https://fixitsukil.github.io/bossman-queue/";
 
 var currentToken = null;
 var secondsLeft = 0;
-
-function call(params) {
-  var qs = Object.keys(params).map(function(k) { return k + "=" + encodeURIComponent(params[k]); }).join("&");
-  return fetch(API + "?" + qs).then(function(r) { return r.json(); });
-}
 
 function drawQR(token) {
   QRCode.toCanvas(document.getElementById("qr"), SITE + "?t=" + token, { width: 300, margin: 1 }, function(err) {

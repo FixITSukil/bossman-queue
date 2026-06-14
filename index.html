@@ -120,9 +120,8 @@
 
 </div>
 
+<script src="api.js"></script>
 <script>
-var API = "https://script.google.com/macros/s/AKfycbzbQwHdDmrGWLWMI6yST7-zCb69k1F-znD93NMsq6sTs0gSlygR51c9ykPPZysiygWH/exec";
-
 var barbers = [];
 var selectedBarber = null;
 var queueCounts = {};
@@ -132,11 +131,6 @@ var refreshInterval = null;
 var facialTherapist = null;
 var myFacialEntryId = null;
 var myFacialBarberId = null;
-
-function call(params) {
-  var qs = Object.keys(params).map(function(k) { return k + "=" + encodeURIComponent(params[k]); }).join("&");
-  return fetch(API + "?" + qs).then(function(r) { return r.json(); });
-}
 
 // Minutes left on the current cut, counting down with real elapsed time
 function remainingCut(serving, avg) {
