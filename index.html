@@ -405,8 +405,8 @@ function leaveQueue() {
   if (!myEntryId) return;
   if (!confirm("Are you sure you want to leave the queue?")) return;
   document.getElementById("btn-leave").textContent = "Leaving…";
-  var calls = [ call({ action: "updateStatus", id: myEntryId, status: "no_show", barberName: "" }) ];
-  if (myFacialEntryId) calls.push(call({ action: "updateStatus", id: myFacialEntryId, status: "no_show", barberName: "" }));
+  var calls = [ call({ action: "leaveQueue", id: myEntryId }) ];
+  if (myFacialEntryId) calls.push(call({ action: "leaveQueue", id: myFacialEntryId }));
   Promise.all(calls).then(function() {
     clearInterval(refreshInterval);
     clearEntry();

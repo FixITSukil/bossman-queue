@@ -1,6 +1,5 @@
-// Bossman Queue — Supabase API layer.
-// Exposes a global call({action, ...}) that returns the same shapes the app
-// already expects, so the page code didn't need to change.
+// Bossman Queue — Supabase API layer (hardened).
+// Public key can only read non-sensitive views and write through validated RPCs.
 
 var SUPABASE_URL = "https://ksgkzeiaxwzgufilqbso.supabase.co";
 var SUPABASE_KEY = "sb_publishable_7QvZN9zPxjI6gG9BdoTj4A_hz6mt6IJ";
@@ -19,81 +18,64 @@ function sbRpc(fn, body) {
     method: "POST", headers: SB_HEADERS, body: JSON.stringify(body || {})
   }).then(function(r) { return r.json(); });
 }
-function sbPatch(path, body) {
-  return fetch(SUPABASE_URL + "/rest/v1/" + path, {
-    method: "PATCH",
-    headers: Object.assign({ "Prefer": "return=minimal" }, SB_HEADERS),
-    body: JSON.stringify(body)
-  }).then(function() { return { ok: true }; });
-}
 
 function mapBarber(r) {
-  return { id: r.id, name: r.name, pin: String(r.pin), isActive: r.is_active, avgMinutes: r.avg_minutes, role: r.role };
+  return { id: r.id, name: r.name, isActive: r.is_active, avgMinutes: r.avg_minutes, role: r.role };
 }
-function mapEntry(r) {
+function mapPublicEntry(r) {
   return {
-    id: r.id, barberId: r.barber_id, barberName: r.barber_name,
-    customerName: r.customer_name, phone: r.phone, status: r.status,
-    position: r.position, durationMinutes: r.duration_minutes,
-    calledAt: r.called_at, createdAt: r.created_at
+    id: r.id, barberId: r.barber_id, status: r.status, position: r.position,
+    durationMinutes: r.duration_minutes, calledAt: r.called_at, createdAt: r.created_at
   };
 }
 
 var DB = {
+  // Public reads (no PINs, no phone numbers, no names)
   getBarbers: function() {
-    return sbSelect("barbers?is_active=eq.true&order=sort.asc,name.asc").then(function(a) { return (a || []).map(mapBarber); });
+    return sbSelect("barbers_public?is_active=eq.true&order=sort.asc,name.asc").then(function(a) { return (a || []).map(mapBarber); });
   },
   getAllBarbers: function() {
-    return sbSelect("barbers?order=sort.asc,name.asc").then(function(a) { return (a || []).map(mapBarber); });
-  },
-  getBarberByPin: function(pin) {
-    return sbSelect("barbers?pin=eq." + encodeURIComponent(pin)).then(function(a) { return (a && a[0]) ? mapBarber(a[0]) : null; });
+    return sbSelect("barbers_public?order=sort.asc,name.asc").then(function(a) { return (a || []).map(mapBarber); });
   },
   getQueue: function(barberId) {
-    return sbSelect("queue_entries?barber_id=eq." + encodeURIComponent(barberId) + "&status=in.(waiting,called)&order=position.asc")
-      .then(function(a) { return (a || []).map(mapEntry); });
+    return sbSelect("queue_public?barber_id=eq." + encodeURIComponent(barberId) + "&status=in.(waiting,called)&order=position.asc")
+      .then(function(a) { return (a || []).map(mapPublicEntry); });
   },
+  // Joins / customer self-cancel
   joinQueue: function(p) {
     return sbRpc("join_queue", {
       p_barber_id: p.barberId, p_barber_name: p.barberName,
       p_customer_name: p.customerName, p_phone: p.phone, p_token: p.t || ""
     });
   },
-  updateStatus: function(id, status) {
-    return sbPatch("queue_entries?id=eq." + id, { status: status });
-  },
-  callNext: function(barberId, barberName, mins) {
-    return DB.getQueue(barberId).then(function(q) {
-      var next = (q || []).filter(function(e) { return e.status === "waiting"; })
-                          .sort(function(a, b) { return a.position - b.position; })[0];
-      if (!next) return { error: "No one waiting" };
-      return sbPatch("queue_entries?id=eq." + next.id, {
-        status: "called", called_at: new Date().toISOString(), duration_minutes: parseInt(mins) || 35
-      });
-    });
-  },
-  toggleActive: function(barberId) {
-    return sbSelect("barbers?id=eq." + encodeURIComponent(barberId) + "&select=is_active").then(function(a) {
-      var cur = (a && a[0]) ? a[0].is_active : true;
-      var nv = !cur;
-      return sbPatch("barbers?id=eq." + encodeURIComponent(barberId), { is_active: nv }).then(function() { return { ok: true, isActive: nv }; });
-    });
-  },
+  leaveQueue: function(id) { return sbRpc("leave_queue", { p_entry_id: id }); },
+  // Barber dashboard (PIN-gated, returns full detail incl. phone)
+  getBarberByPin: function(pin) { return sbRpc("get_barber_by_pin", { p_pin: pin }); },
+  getBarberQueue: function(pin) { return sbRpc("get_queue_for_barber", { p_pin: pin }); },
+  callNext: function(pin, mins) { return sbRpc("call_next", { p_pin: pin, p_duration: parseInt(mins) || 35 }); },
+  setStatus: function(pin, id, status) { return sbRpc("set_status", { p_pin: pin, p_entry_id: id, p_status: status }); },
+  toggleActive: function(pin) { return sbRpc("toggle_active", { p_pin: pin }); },
+  // Owner (PIN-gated)
+  getOwnerView: function(pin) { return sbRpc("get_owner_view", { p_owner_pin: pin }); },
+  // Misc
   getToken: function() { return sbRpc("get_qr_token", {}); },
   getDailyStats: function() { return sbRpc("get_daily_stats", {}); }
 };
 
-// Compatibility shim: the pages call(action, ...) just like before.
+// Compatibility shim used by the pages
 function call(params) {
   switch (params.action) {
     case "getBarbers":     return DB.getBarbers();
     case "getAllBarbers":  return DB.getAllBarbers();
-    case "getBarberByPin": return DB.getBarberByPin(params.pin);
     case "getQueue":       return DB.getQueue(params.barberId);
     case "joinQueue":      return DB.joinQueue(params);
-    case "updateStatus":   return DB.updateStatus(params.id, params.status);
-    case "callNext":       return DB.callNext(params.barberId, params.barberName, params.durationMinutes);
-    case "toggleActive":   return DB.toggleActive(params.barberId);
+    case "leaveQueue":     return DB.leaveQueue(params.id);
+    case "getBarberByPin": return DB.getBarberByPin(params.pin);
+    case "getBarberQueue": return DB.getBarberQueue(params.pin);
+    case "callNext":       return DB.callNext(params.pin, params.durationMinutes);
+    case "setStatus":      return DB.setStatus(params.pin, params.id, params.status);
+    case "toggleActive":   return DB.toggleActive(params.pin);
+    case "getOwnerView":   return DB.getOwnerView(params.pin);
     case "getToken":       return DB.getToken();
     case "getDailyStats":  return DB.getDailyStats();
     default:               return Promise.resolve({ error: "Unknown action" });

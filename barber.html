@@ -168,7 +168,7 @@ function init() {
 
 function loadQueue() {
   if (!barber) return;
-  call({ action: "getQueue", barberId: barber.id }).then(renderQueue).catch(function() {});
+  call({ action: "getBarberQueue", pin: PIN }).then(renderQueue).catch(function() {});
 }
 
 function renderQueue(queue) {
@@ -239,19 +239,18 @@ function confirmCallNext() {
   var mins = parseInt(document.getElementById("duration-input").value) || 30;
   closeModal();
   document.getElementById("call-btn").textContent = "Calling…";
-  call({ action: "callNext", barberId: barber.id, barberName: barber.name, durationMinutes: mins })
+  call({ action: "callNext", pin: PIN, durationMinutes: mins })
     .then(loadQueue).catch(loadQueue);
 }
 function markStatus(id, status) {
   if (!id || !barber) return;
-  call({ action: "updateStatus", id: id, status: status, barberName: barber.name })
+  call({ action: "setStatus", pin: PIN, id: id, status: status })
     .then(loadQueue).catch(function() {});
 }
 function toggleActive() {
   if (!barber) return;
-  call({ action: "toggleActive", barberId: barber.id }).then(function(res) {
-    barber.isActive = res.isActive;
-    updateToggleBtn();
+  call({ action: "toggleActive", pin: PIN }).then(function(res) {
+    if (res && typeof res.isActive !== "undefined") { barber.isActive = res.isActive; updateToggleBtn(); }
   }).catch(function() {});
 }
 function updateToggleBtn() {

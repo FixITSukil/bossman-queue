@@ -113,43 +113,30 @@ function tickClock() {
 }
 setInterval(tickClock, 1000);
 
+var OWNER_PIN = new URLSearchParams(window.location.search).get("pin") || "";
+
 function loadAll() {
-  // Prefer getAllBarbers (shows inactive too); fall back to getBarbers if the
-  // script hasn't been redeployed with that endpoint yet.
-  call({ action: "getAllBarbers" })
-    .then(function(all) {
-      if (!Array.isArray(all)) throw new Error("use-fallback");
-      return all;
-    })
-    .catch(function() {
-      return call({ action: "getBarbers" }).then(function(a) { return Array.isArray(a) ? a : []; });
-    })
-    .then(function(all) {
-      var results = {};
-      var pending = all.length;
-      if (pending === 0) { render([], {}); return; }
-      all.forEach(function(b) {
-        call({ action: "getQueue", barberId: b.id }).then(function(q) {
-          results[b.id] = Array.isArray(q) ? q : [];
-          pending--;
-          if (pending === 0) render(all, results);
-        }).catch(function() { pending--; if (pending === 0) render(all, results); });
-      });
-    })
-    .catch(function() {
-      document.getElementById("barbers-container").innerHTML = "<p style='text-align:center;color:#e88;padding:2rem'>Failed to load. Please refresh.</p>";
-    });
+  call({ action: "getOwnerView", pin: OWNER_PIN }).then(function(res) {
+    if (!res || res.error) {
+      document.getElementById("barbers-container").innerHTML = "<p style='text-align:center;color:#e88;padding:2rem'>"
+        + (res && res.error === "bad_pin" ? "Invalid owner PIN — check your link." : "Failed to load. Please refresh.") + "</p>";
+      return;
+    }
+    render(res.workers || []);
+  }).catch(function() {
+    document.getElementById("barbers-container").innerHTML = "<p style='text-align:center;color:#e88;padding:2rem'>Failed to load. Please refresh.</p>";
+  });
 }
 
-function render(barbers, queues) {
+function render(workers) {
  try {
   var now = new Date();
   document.getElementById("last-refresh").textContent = "Updated " + now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
   var totalWaiting = 0, totalServing = 0, totalActive = 0;
   var html = "";
-  barbers.forEach(function(b) {
-    var queue   = queues[b.id] || [];
+  workers.forEach(function(b) {
+    var queue   = b.queue || [];
     var waiting = queue.filter(function(e) { return e.status === "waiting"; });
     var serving = queue.find(function(e)  { return e.status === "called"; });
 
