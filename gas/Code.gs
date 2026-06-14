@@ -21,6 +21,7 @@ function doGet(e) {
   else if (action === "toggleActive") result = toggleActive(e.parameter.barberId);
   else if (action === "getBarberByPin") result = getBarberByPin(e.parameter.pin);
   else if (action === "getAllBarbers")  result = getAllBarbers();
+  else if (action === "getDailyStats")  result = getDailyStats();
   else if (action === "clearQueue")     result = clearOldQueue();
   else result = { error: "Unknown action" };
 
@@ -39,6 +40,34 @@ function getBarbers() {
     }
   }
   return barbers;
+}
+
+// End-of-day totals: counts today's customers (served + total joined), per worker.
+// Note: the nightly clearOldQueue wipes the sheet at ~11 PM, so check before then.
+function getDailyStats() {
+  var qRows = getQueueSheet().getDataRange().getValues();
+  var bRows = getBarbersSheet().getDataRange().getValues();
+  var names = {};
+  for (var b = 1; b < bRows.length; b++) { names[bRows[b][0]] = bRows[b][1]; }
+
+  var today = new Date().toDateString();
+  var totalJoined = 0, totalServed = 0;
+  var perWorker = {};
+
+  for (var i = 1; i < qRows.length; i++) {
+    var created = qRows[i][8] ? new Date(qRows[i][8]).toDateString() : null;
+    if (created !== today) continue;
+    var bid = qRows[i][1];
+    var status = qRows[i][5];
+    if (!perWorker[bid]) perWorker[bid] = { name: names[bid] || bid, served: 0, joined: 0 };
+    perWorker[bid].joined++;
+    totalJoined++;
+    if (status === "done") { perWorker[bid].served++; totalServed++; }
+  }
+
+  var list = [];
+  for (var k in perWorker) { list.push({ id: k, name: perWorker[k].name, served: perWorker[k].served, joined: perWorker[k].joined }); }
+  return { date: today, totalJoined: totalJoined, totalServed: totalServed, perWorker: list };
 }
 
 function getAllBarbers() {

@@ -43,6 +43,16 @@
   .q-phone { font-size: 0.73rem; color: var(--cream-dim); }
   .q-wait  { margin-left: auto; font-size: 0.72rem; color: var(--cream-dim); white-space: nowrap; }
 
+  .eod { background: linear-gradient(135deg, var(--gold), var(--gold-bright)); color: var(--pine); border-radius: 1rem; padding: 1.1rem 1.25rem; margin-bottom: 1rem; }
+  .eod-head { display: flex; align-items: center; justify-content: space-between; }
+  .eod-title { font-family: var(--serif); font-weight: 800; font-size: 1.05rem; }
+  .eod-date { font-size: 0.7rem; opacity: 0.75; letter-spacing: 0.05em; }
+  .eod-nums { display: flex; gap: 2rem; margin-top: 0.6rem; }
+  .eod-val { font-family: var(--serif); font-weight: 800; font-size: 1.9rem; line-height: 1; }
+  .eod-lbl { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.8; margin-top: 0.15rem; }
+  .eod-workers { display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; margin-top: 0.85rem; padding-top: 0.7rem; border-top: 1px solid rgba(14,40,24,0.2); }
+  .eod-workers span { font-size: 0.78rem; }
+  .eod-workers b { font-family: var(--serif); }
   .empty-queue { padding: 1rem; text-align: center; color: var(--cream-dim); opacity: 0.6; font-size: 0.85rem; }
   .refresh-note { text-align: center; font-size: 0.68rem; color: var(--cream-dim); opacity: 0.5; padding: 1rem 0 0.5rem; letter-spacing: 0.05em; }
 </style>
@@ -63,6 +73,18 @@
     <div class="sum-card"><div class="sum-val" id="sum-total">–</div><div class="sum-label">total waiting</div></div>
     <div class="sum-card"><div class="sum-val" id="sum-serving">–</div><div class="sum-label">being served</div></div>
     <div class="sum-card"><div class="sum-val" id="sum-active">–</div><div class="sum-label">barbers active</div></div>
+  </div>
+
+  <div id="eod" class="eod hidden">
+    <div class="eod-head">
+      <span class="eod-title">📊 Today's Total</span>
+      <span class="eod-date" id="eod-date"></span>
+    </div>
+    <div class="eod-nums">
+      <div><div class="eod-val" id="eod-served">–</div><div class="eod-lbl">served</div></div>
+      <div><div class="eod-val" id="eod-joined">–</div><div class="eod-lbl">total joined</div></div>
+    </div>
+    <div id="eod-workers" class="eod-workers"></div>
   </div>
 
   <div class="barbers" id="barbers-container">
@@ -182,8 +204,24 @@ function render(barbers, queues) {
  }
 }
 
+function loadStats() {
+  call({ action: "getDailyStats" }).then(function(s) {
+    if (!s || s.error || typeof s.totalJoined === "undefined") return; // needs redeploy
+    document.getElementById("eod").classList.remove("hidden");
+    document.getElementById("eod-date").textContent   = s.date || "";
+    document.getElementById("eod-served").textContent = s.totalServed;
+    document.getElementById("eod-joined").textContent = s.totalJoined;
+    var w = (s.perWorker || []).map(function(p) {
+      return "<span><b>" + p.name + "</b> — " + p.served + " served</span>";
+    }).join("");
+    document.getElementById("eod-workers").innerHTML = w;
+  }).catch(function() {});
+}
+
 loadAll();
+loadStats();
 setInterval(loadAll, 30000);
+setInterval(loadStats, 60000);
 </script>
 </body>
 </html>

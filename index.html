@@ -278,11 +278,24 @@ function renderBarbers() {
   }
 }
 
+var THROTTLE_MIN = 30; // a device may only join once every 30 minutes
+var LAST_JOIN_KEY = "bossman_last_join";
+
 function joinQueue() {
   var name  = document.getElementById("inp-name").value.trim();
   var phone = document.getElementById("inp-phone").value.trim();
   var errEl = document.getElementById("form-error");
   if (!name || !phone) { errEl.textContent = "Please enter your name and phone number."; errEl.classList.remove("hidden"); return; }
+
+  // Device throttle: block re-joining within 30 minutes of the last join
+  var last = parseInt(localStorage.getItem(LAST_JOIN_KEY) || "0");
+  var minsSince = (Date.now() - last) / 60000;
+  if (last && minsSince < THROTTLE_MIN) {
+    var wait = Math.ceil(THROTTLE_MIN - minsSince);
+    errEl.textContent = "This device already joined recently. Please wait " + wait + " more minute" + (wait === 1 ? "" : "s") + ", or see our staff.";
+    errEl.classList.remove("hidden");
+    return;
+  }
   errEl.classList.add("hidden");
   var btn = document.getElementById("btn-join");
   btn.disabled = true; btn.textContent = "Joining…";
