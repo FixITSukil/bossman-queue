@@ -276,11 +276,11 @@ var THROTTLE_MIN = 30; // a device may only join once every 30 minutes
 var LAST_JOIN_KEY = "bossman_last_join";
 var QR_TOKEN = new URLSearchParams(window.location.search).get("t") || "";
 
-// ── Geofencing ── set GEOFENCE_ENABLED = true once SHOP coords are filled in ──
-var GEOFENCE_ENABLED = false;
-var SHOP_LAT = 0.0;
-var SHOP_LNG = 0.0;
-var GEOFENCE_RADIUS_M = 120; // metres
+// ── Geofencing ── Bossman, Taipan Business Centre, USJ 10/1, Subang Jaya ──
+var GEOFENCE_ENABLED = true;
+var SHOP_LAT = 3.0454;
+var SHOP_LNG = 101.5852;
+var GEOFENCE_RADIUS_M = 250; // metres — covers the Taipan block, blocks remote joins
 
 function distanceM(la1, lo1, la2, lo2) {
   var R = 6371000, t = Math.PI / 180;
