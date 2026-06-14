@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scan to Join — Bossman</title>
+<link rel="stylesheet" href="brand.css">
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<style>
+  body { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; text-align: center; padding: 2rem; }
+  img.logo { width: 130px; border-radius: 6px; margin-bottom: 1rem; }
+  h1 { font-family: var(--serif); font-weight: 800; letter-spacing: 0.2em; color: var(--cream); font-size: 2rem; text-transform: uppercase; margin-left: 0.2em; }
+  .tag { color: var(--gold); letter-spacing: 0.35em; text-transform: uppercase; font-size: 0.7rem; margin-top: 0.4rem; }
+  .qr-frame { background: var(--cream); padding: 1.25rem; border-radius: 1rem; margin: 2rem auto 1.25rem; display: inline-block; box-shadow: 0 12px 40px rgba(0,0,0,0.45); }
+  #qr { width: 300px; height: 300px; display: block; }
+  .scan-label { font-family: var(--serif); color: var(--cream); font-size: 1.4rem; }
+  .countdown { color: var(--cream-dim); font-size: 0.85rem; margin-top: 0.6rem; letter-spacing: 0.08em; }
+  .countdown b { color: var(--gold); }
+  .note { color: var(--cream-dim); font-size: 0.78rem; margin-top: 1.5rem; max-width: 360px; line-height: 1.6; opacity: 0.8; }
+  .err { color: #e88; margin-top: 2rem; }
+</style>
+</head>
+<body>
+  <img src="logo.png" class="logo" alt="Bossman" onerror="this.style.display='none'">
+  <h1>Bossman</h1>
+  <div class="tag">Gentleman's Club</div>
+
+  <div class="qr-frame"><canvas id="qr"></canvas></div>
+  <div class="scan-label">Scan to Join the Queue</div>
+  <div class="countdown">Code refreshes in <b id="count">--:--</b></div>
+  <p class="note">This code changes every 30 minutes and only works in-store. Please scan it here at the counter — screenshots will not work later.</p>
+
+<script>
+var API  = "https://script.google.com/macros/s/AKfycbzbQwHdDmrGWLWMI6yST7-zCb69k1F-znD93NMsq6sTs0gSlygR51c9ykPPZysiygWH/exec";
+var SITE = "https://fixitsukil.github.io/bossman-queue/";
+
+var currentToken = null;
+var secondsLeft = 0;
+
+function call(params) {
+  var qs = Object.keys(params).map(function(k) { return k + "=" + encodeURIComponent(params[k]); }).join("&");
+  return fetch(API + "?" + qs).then(function(r) { return r.json(); });
+}
+
+function drawQR(token) {
+  QRCode.toCanvas(document.getElementById("qr"), SITE + "?t=" + token, { width: 300, margin: 1 }, function(err) {
+    if (err) document.querySelector(".qr-frame").innerHTML = "<p style='color:#900'>QR error</p>";
+  });
+}
+
+function refreshToken() {
+  call({ action: "getToken" }).then(function(r) {
+    if (!r || !r.token) { showErr(); return; }
+    secondsLeft = r.secondsLeft;
+    if (r.token !== currentToken) { currentToken = r.token; drawQR(currentToken); }
+  }).catch(showErr);
+}
+
+function showErr() {
+  document.querySelector(".countdown").innerHTML = "<span class='err'>Can't reach server. Check Wi-Fi.</span>";
+}
+
+function tick() {
+  if (secondsLeft > 0) secondsLeft--;
+  var m = Math.floor(secondsLeft / 60), s = secondsLeft % 60;
+  document.getElementById("count").textContent = m + ":" + (s < 10 ? "0" + s : s);
+  if (secondsLeft <= 0) refreshToken();
+}
+
+refreshToken();
+setInterval(tick, 1000);
+setInterval(refreshToken, 60000); // resync every minute
+</script>
+</body>
+</html>

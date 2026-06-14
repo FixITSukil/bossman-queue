@@ -2,6 +2,11 @@
 var SHEET_ID = "1rsHKVSYnjGohxMOjfAQ0Pf1hpj-bKmZ46-g0p7c8mj4";
 var CALLMEBOT_API_KEY = ""; // optional: fill in for WhatsApp notifications
 var NOTIFY_WHEN_POSITION = 2;
+
+// ── Rotating QR security ──────────────────────────────────────────────────
+var REQUIRE_QR_TOKEN = true;            // require a valid, current QR token to join
+var QR_SECRET = "Boss$man-2024-stag-r0t";// change this to your own secret phrase
+var TOKEN_WINDOW_MIN = 30;               // QR token rotates every 30 minutes
 // ───────────────────────────────────────────────────────────────────────────
 
 function getSpreadsheet() { return SpreadsheetApp.openById(SHEET_ID); }
@@ -22,6 +27,7 @@ function doGet(e) {
   else if (action === "getBarberByPin") result = getBarberByPin(e.parameter.pin);
   else if (action === "getAllBarbers")  result = getAllBarbers();
   else if (action === "getDailyStats")  result = getDailyStats();
+  else if (action === "getToken")       result = getToken();
   else if (action === "clearQueue")     result = clearOldQueue();
   else result = { error: "Unknown action" };
 
@@ -124,7 +130,30 @@ function getQueue(barberId) {
   return queue;
 }
 
+// ── Rotating QR token ─────────────────────────────────────────────────────
+function currentWindow() { return Math.floor(Date.now() / (TOKEN_WINDOW_MIN * 60000)); }
+
+function tokenForWindow(w) {
+  var bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, w + "|" + QR_SECRET);
+  var hex = bytes.map(function(b) { var v = (b < 0 ? b + 256 : b).toString(16); return v.length === 1 ? "0" + v : v; }).join("");
+  return hex.substring(0, 8);
+}
+
+function getToken() {
+  var w = currentWindow();
+  var msLeft = (w + 1) * TOKEN_WINDOW_MIN * 60000 - Date.now();
+  return { token: tokenForWindow(w), secondsLeft: Math.round(msLeft / 1000), windowMin: TOKEN_WINDOW_MIN };
+}
+
+function validToken(t) {
+  if (!REQUIRE_QR_TOKEN) return true;
+  if (!t) return false;
+  var w = currentWindow();
+  return t === tokenForWindow(w) || t === tokenForWindow(w - 1); // 1-window grace
+}
+
 function joinQueue(params) {
+  if (!validToken(params.t)) return { error: "expired_qr" };
   var sheet    = getQueueSheet();
   var queue    = getQueue(params.barberId);
 
