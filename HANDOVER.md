@@ -4,7 +4,7 @@ A simple QR-based queue system for Bossman Gentleman's Club Barbershop.
 Customers scan a QR at the counter, pick a worker, and join the queue. Workers
 manage their line from their phone. The owner sees everything at a glance.
 
-Everything runs on free services. There is nothing to install and nothing to pay.
+Everything runs on hosted web services; there is nothing to install on customer devices.
 
 ---
 
@@ -12,106 +12,127 @@ Everything runs on free services. There is nothing to install and nothing to pay
 
 | Who | Link | Notes |
 |-----|------|-------|
-| **Tablet at counter** | `https://fixitsukil.github.io/bossman-queue/qr-display.html` | Shows the rotating QR. Keep this open fullscreen on the tablet, all day. |
-| **Customer** | `https://fixitsukil.github.io/bossman-queue/` | What opens when a customer scans the QR. (No need to share directly.) |
-| **Owner (you)** | `https://fixitsukil.github.io/bossman-queue/owner.html?pin=8888` | Live view of all queues + today's totals. |
-| **Website / menu** | `https://fixitsukil.github.io/bossman-queue/website.html` | Premium price-list page you can share on social media. |
-| **Assaf** | `https://fixitsukil.github.io/bossman-queue/barber.html?pin=1111` | His dashboard. |
-| **Karam** | `https://fixitsukil.github.io/bossman-queue/barber.html?pin=2222` | His dashboard. |
-| **Jalal** | `https://fixitsukil.github.io/bossman-queue/barber.html?pin=3333` | His dashboard. |
-| **Jassy** | `https://fixitsukil.github.io/bossman-queue/barber.html?pin=4444` | Facial therapist dashboard. |
+| **Tablet at counter** | `https://fixitsukil.github.io/bossman-queue/qr-display.html` | Shows the rotating QR. Keep this open fullscreen on the tablet during business hours. |
+| **Customer** | `https://fixitsukil.github.io/bossman-queue/` | Opens when a customer scans the QR. |
+| **Owner** | `https://fixitsukil.github.io/bossman-queue/owner.html?pin=<OWNER_SECRET>` | Live view of all queues + today's totals. |
+| **Website / menu** | `https://fixitsukil.github.io/bossman-queue/website.html` | Premium price-list page. |
+| **Worker dashboard** | `https://fixitsukil.github.io/bossman-queue/barber.html?pin=<WORKER_SECRET>` | Each worker has their own private secret link. |
 
-> Each worker should **bookmark their own link** on their phone (open in Chrome/Safari, then Add to Home Screen).
+**Do not commit production owner/worker secrets to this repository.** Store each private link only on the relevant staff device or in a secure password manager.
 
 ---
 
 ## 2. Daily use
 
-**Opening:**
-1. Turn on the counter tablet, open the **Tablet** link fullscreen. The rotating QR appears.
-2. Each worker opens their own dashboard link on their phone.
+### Opening
+1. Turn on/unlock the counter iPad and open the **Bossman Queue** Home Screen icon.
+2. Keep the QR display open for the whole business day.
+3. Each worker opens their own private dashboard link on their phone.
 
-**A customer arrives:**
-1. They scan the QR on the tablet.
-2. They pick their barber (or Jassy for a facial). For a haircut + facial, they tick "My service includes a facial" — that adds them to Jassy's list at the same time.
-3. They enter name + WhatsApp number and tap Join. They see their position and rough wait.
+### A customer arrives
+1. They scan the QR on the iPad.
+2. They pick a barber or therapist.
+3. They enter their name + WhatsApp number and tap **Join Queue**.
+4. They see their live queue position and estimated wait.
 
-**A worker serving customers:**
-- Their dashboard shows who's waiting. Tap **Call Next**, set how many minutes the service will take, tap **Call & Start**.
-- The customer in the chair shows at the top. Use 📞 / 💬 to call/WhatsApp them if they've wandered off.
-- Tap ✅ when done, or ❌ for a no-show.
+### A worker serving customers
+- The worker dashboard shows who's waiting.
+- Tap **Call Next**, set the service duration, then **Call & Start**.
+- Use the call/WhatsApp buttons if the customer has stepped away.
+- Tap done when finished, or no-show when appropriate.
 
-**Closing:**
-- Nothing to do. At **11 PM** the queue automatically resets to zero and the day's totals are saved.
+### Closing
+- The queue is designed to snapshot the day's totals and reset automatically at **11 PM Malaysia time** via Supabase Cron.
+- The scheduled job should be verified in the live Supabase project after any database rebuild or project restore.
 
 ---
 
 ## 3. Owner view
 
-Open your link (`owner.html?pin=8888`). You'll see:
-- **Today's Total** — customers served + total joined, per worker.
-- Each worker's live queue, who's being served, and estimated waits.
-- Auto-refreshes every 30 seconds.
+The private owner URL provides:
+- Today's joined and served totals.
+- Each worker's live queue.
+- Current customer being served.
+- Estimated waits.
+- Automatic refreshes.
+
+Never publish the production owner URL because the query-string secret authorizes access to customer details.
 
 ---
 
-## 4. Fairness & anti-abuse (already on)
+## 4. Fairness & anti-abuse
 
-- **Rotating QR** — the code changes every 30 minutes, so a screenshot can't be reused later.
-- **Location check** — customers must be physically at the shop to join (blocks pre-registering from home).
-- **One join per phone**, and **one join per device every 30 minutes**.
+- **Rotating QR** — changes every 30 minutes.
+- **Location check** — customers must be physically near Bossman to join.
+- **Phone/device safeguards** — reduce duplicate queue joins.
 
 ---
 
 ## 5. Common admin tasks
 
-> These need the **Supabase** account (the database). Log in at supabase.com with the
-> Google account used to create it → open the **Bossman** project → **SQL Editor** →
-> **New query**, paste the command, and click **Run**.
+Database administration is performed in the Bossman Supabase project.
 
-**Change a PIN** (example: the owner PIN):
+### Change owner secret
 ```sql
-update app_config set value = 'NEWPIN' where key = 'owner_pin';
+update app_config set value = '<NEW_RANDOM_SECRET>' where key = 'owner_pin';
 ```
-Change a worker's PIN by editing the `barbers` table (Table Editor → barbers → edit the `pin` cell).
 
-**Add a new barber:**
+### Change a worker secret
+Update the relevant `barbers.pin` value. Use a long random secret rather than a short 4-digit PIN for production.
+
+### Add a new worker
 ```sql
 insert into barbers (id, name, pin, is_active, avg_minutes, role, sort)
-values ('barber4', 'New Name', '5555', true, 35, 'barber', 5);
+values ('barber4', 'New Name', '<LONG_RANDOM_SECRET>', true, 35, 'barber', 5);
 ```
-(Use `role` = `therapist` for a facial therapist.)
 
-**Temporarily turn the QR-code requirement off** (e.g. for testing):
+Use `role = 'therapist'` for a therapist.
+
+### Temporarily disable QR-token enforcement for testing
 ```sql
-update app_config set value = 'false' where key = 'require_token';  -- 'true' to turn back on
+update app_config set value = 'false' where key = 'require_token';
 ```
 
-**See saved daily history:** Table Editor → `daily_totals`.
+Turn it back on immediately after testing:
+```sql
+update app_config set value = 'true' where key = 'require_token';
+```
 
 ---
 
-## 6. Who to call / where things live
+## 6. Where things live
 
-- **Code:** GitHub — `github.com/FixITSukil/bossman-queue` (the website files).
-- **Database:** Supabase — the project that stores barbers, the queue, and daily totals.
-- **Hosting:** GitHub Pages (free) serves the website automatically.
+- **Code:** GitHub — `FixITSukil/bossman-queue`
+- **Database:** Supabase — Bossman project
+- **Hosting:** GitHub Pages
 
-Changes to how the system *works* are made in the code (GitHub) by whoever maintains it —
-no "redeploy" or server steps are needed; updates go live automatically.
+Changes committed to the configured GitHub Pages branch are published automatically.
 
 ---
 
-## 7. Troubleshooting
+## 7. iPad counter setup
+
+For reliable kiosk use:
+- Add the QR display page to the iPad Home Screen.
+- Keep the iPad connected to power during business hours.
+- Set **Settings → Display & Brightness → Auto-Lock → Never**.
+- Use **Guided Access** to lock the iPad into the Bossman display when required.
+- Keep the iPad on the shop Wi-Fi.
+
+The QR page also requests a browser screen wake lock when supported, with iPad Auto-Lock settings as the fallback.
+
+---
+
+## 8. Troubleshooting
 
 | Problem | Fix |
 |---------|-----|
-| Tablet QR blank / "Can't reach server" | Check the tablet's Wi-Fi. Refresh the page. |
-| Customer says "You must be at Bossman" but they're inside | Ask them to allow location in their browser. If it still blocks people inside, the shop location may need fine-tuning — note it down. |
-| Customer says "QR has expired" | They scanned an old screenshot. Ask them to scan the live tablet QR again. |
-| A worker's dashboard is empty / "Invalid PIN" | Check they're using the correct link with their PIN. |
-| Owner page won't load | Make sure the link ends with `?pin=8888` (your owner PIN). |
+| QR blank / can't reach server | Check shop Wi-Fi, then refresh the display. Check that the Supabase project is active. |
+| Customer is physically inside but location is rejected | Allow location access in the browser and retry. |
+| QR expired | Scan the current live QR again. |
+| Worker dashboard says invalid PIN/secret | Use that worker's current private dashboard URL. |
+| Owner dashboard fails | Confirm the private owner URL contains the current owner secret. |
 
 ---
 
-*Prepared as a handover for Rajdave. Keep this document somewhere safe.*
+*Production secrets intentionally omitted from this public repository.*
