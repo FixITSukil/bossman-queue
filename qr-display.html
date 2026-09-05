@@ -10,7 +10,6 @@
 <link rel="apple-touch-icon" href="logo.png">
 <title>Scan to Join — Bossman</title>
 <link rel="stylesheet" href="brand.css">
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <style>
   html, body { min-height: 100%; overscroll-behavior: none; }
   body { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; min-height: 100dvh; text-align: center; padding: max(2rem, env(safe-area-inset-top)) max(2rem, env(safe-area-inset-right)) max(2rem, env(safe-area-inset-bottom)) max(2rem, env(safe-area-inset-left)); -webkit-user-select: none; user-select: none; }
@@ -41,11 +40,48 @@ var KIOSK_SECRET = new URLSearchParams(window.location.search).get("kiosk") || "
 var currentToken = null;
 var secondsLeft = 0;
 var wakeLock = null;
+var qrLoader = null;
+
+function ensureQRCode() {
+  if (window.QRCode && typeof window.QRCode.toCanvas === "function") {
+    return Promise.resolve();
+  }
+  if (qrLoader) return qrLoader;
+
+  var urls = [
+    "https://cdn.jsdelivr.net/npm/qrcode@1.5.0/build/qrcode.js",
+    "https://unpkg.com/qrcode@1.5.0/build/qrcode.js"
+  ];
+
+  qrLoader = new Promise(function(resolve, reject) {
+    var i = 0;
+    function tryNext() {
+      if (i >= urls.length) {
+        reject(new Error("QR renderer unavailable"));
+        return;
+      }
+      var s = document.createElement("script");
+      s.src = urls[i++];
+      s.async = true;
+      s.onload = function() {
+        if (window.QRCode && typeof window.QRCode.toCanvas === "function") resolve();
+        else tryNext();
+      };
+      s.onerror = tryNext;
+      document.head.appendChild(s);
+    }
+    tryNext();
+  });
+
+  return qrLoader;
+}
 
 function drawQR(token) {
-  QRCode.toCanvas(document.getElementById("qr"), SITE + "?t=" + token, { width: 300, margin: 1 }, function(err) {
-    if (err) document.querySelector(".qr-frame").innerHTML = "<p style='color:#900'>QR error</p>";
-  });
+  ensureQRCode().then(function() {
+    QRCode.toCanvas(document.getElementById("qr"), SITE + "?t=" + token, { width: 300, margin: 1 }, function(err) {
+      if (err) showQrErr();
+    });
+  }).catch(showQrErr);
 }
 
 function refreshToken() {
@@ -54,14 +90,21 @@ function refreshToken() {
     return;
   }
   call({ action: "getToken", kioskSecret: KIOSK_SECRET }).then(function(r) {
-    if (!r || !r.token) { showErr(); return; }
+    if (!r || !r.token) { showServerErr(); return; }
     secondsLeft = r.secondsLeft;
-    if (r.token !== currentToken) { currentToken = r.token; drawQR(currentToken); }
-  }).catch(showErr);
+    if (r.token !== currentToken) {
+      currentToken = r.token;
+      drawQR(currentToken);
+    }
+  }).catch(showServerErr);
 }
 
-function showErr() {
-  document.querySelector(".countdown").innerHTML = "<span class='err'>Can't reach server. Check Wi-Fi or kiosk link.</span>";
+function showServerErr() {
+  document.querySelector(".countdown").innerHTML = "<span class='err'>Can't reach queue server. Check Wi-Fi.</span>";
+}
+
+function showQrErr() {
+  document.querySelector(".countdown").innerHTML = "<span class='err'>QR display failed to load. Refresh the page.</span>";
 }
 
 function tick() {
@@ -77,7 +120,7 @@ async function keepScreenAwake() {
   try {
     wakeLock = await navigator.wakeLock.request("screen");
   } catch (e) {
-    // iPad settings (Auto-Lock: Never) remain the fallback.
+    // iPad Auto-Lock settings remain the fallback.
   }
 }
 
@@ -88,10 +131,11 @@ document.addEventListener("visibilitychange", function() {
   }
 });
 
+ensureQRCode().catch(function() {});
 keepScreenAwake();
 refreshToken();
 setInterval(tick, 1000);
-setInterval(refreshToken, 60000);
+setInterval(refreshToken, 30000);
 </script>
 </body>
 </html>
