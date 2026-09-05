@@ -39,6 +39,7 @@
 <script src="api.js"></script>
 <script>
 var SITE = "https://fixitsukil.github.io/bossman-queue/";
+var KIOSK_SECRET = new URLSearchParams(window.location.search).get("kiosk") || "";
 var currentToken = null;
 var secondsLeft = 0;
 var wakeLock = null;
@@ -50,7 +51,11 @@ function drawQR(token) {
 }
 
 function refreshToken() {
-  call({ action: "getToken" }).then(function(r) {
+  if (!KIOSK_SECRET) {
+    document.querySelector(".countdown").innerHTML = "<span class='err'>This iPad link is not configured.</span>";
+    return;
+  }
+  call({ action: "getToken", kioskSecret: KIOSK_SECRET }).then(function(r) {
     if (!r || !r.token) { showErr(); return; }
     secondsLeft = r.secondsLeft;
     if (r.token !== currentToken) { currentToken = r.token; drawQR(currentToken); }
@@ -58,7 +63,7 @@ function refreshToken() {
 }
 
 function showErr() {
-  document.querySelector(".countdown").innerHTML = "<span class='err'>Can't reach server. Check Wi-Fi.</span>";
+  document.querySelector(".countdown").innerHTML = "<span class='err'>Can't reach server. Check Wi-Fi or kiosk link.</span>";
 }
 
 function tick() {
