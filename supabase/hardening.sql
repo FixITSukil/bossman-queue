@@ -5,8 +5,10 @@
 -- Paste + run in Supabase SQL Editor (after schema.sql). Safe to re-run.
 -- ============================================================
 
--- Owner dashboard PIN (change '8888' to your own)
-insert into app_config (key, value) values ('owner_pin', '8888')
+-- Owner dashboard secret. Generate a strong random value on first setup.
+-- Never commit the actual production value to GitHub.
+insert into app_config (key, value)
+values ('owner_pin', encode(gen_random_bytes(16), 'hex'))
 on conflict (key) do nothing;
 
 -- ── Remove direct table access from the public key ───────
@@ -27,7 +29,7 @@ create or replace view queue_public as
 
 grant select on barbers_public, queue_public to anon, authenticated;
 
--- ── Helper: resolve a barber by PIN ──────────────────────
+-- ── Helper: resolve a barber by secret link token ────────
 create or replace function get_barber_by_pin(p_pin text)
 returns json language plpgsql security definer set search_path = public as $$
 declare b barbers%rowtype;
@@ -38,7 +40,7 @@ begin
                            'avgMinutes', b.avg_minutes, 'role', b.role);
 end; $$;
 
--- ── Barber's own queue (full detail incl. phone) — needs PIN ──
+-- ── Barber's own queue (full detail incl. phone) — needs secret ──
 create or replace function get_queue_for_barber(p_pin text)
 returns json language plpgsql security definer set search_path = public as $$
 declare v_id text; v_rows json;
@@ -56,7 +58,7 @@ begin
   return v_rows;
 end; $$;
 
--- ── Barber actions (all require PIN) ─────────────────────
+-- ── Barber actions (all require secret) ──────────────────
 create or replace function call_next(p_pin text, p_duration int)
 returns json language plpgsql security definer set search_path = public as $$
 declare v_id text; v_next uuid; v_name text;
@@ -95,7 +97,7 @@ begin
   return json_build_object('ok', true, 'isActive', v_new);
 end; $$;
 
--- ── Customer self-cancel (the entry UUID is the authorisation) ──
+-- ── Customer self-cancel (entry UUID is the authorisation) ──
 create or replace function leave_queue(p_entry_id uuid)
 returns json language plpgsql security definer set search_path = public as $$
 begin
@@ -104,7 +106,7 @@ begin
   return json_build_object('ok', true);
 end; $$;
 
--- ── Owner view (all workers + queues) — needs owner PIN ──
+-- ── Owner view (all workers + queues) — needs owner secret ──
 create or replace function get_owner_view(p_owner_pin text)
 returns json language plpgsql security definer set search_path = public as $$
 declare v_ok text; v_rows json;
@@ -130,8 +132,8 @@ end; $$;
 
 grant execute on function get_barber_by_pin(text)               to anon, authenticated;
 grant execute on function get_queue_for_barber(text)            to anon, authenticated;
-grant execute on function call_next(text,int)                   to anon, authenticated;
-grant execute on function set_status(text,uuid,text)            to anon, authenticated;
-grant execute on function toggle_active(text)                   to anon, authenticated;
-grant execute on function leave_queue(uuid)                     to anon, authenticated;
-grant execute on function get_owner_view(text)                  to anon, authenticated;
+grant execute on function call_next(text,int)                    to anon, authenticated;
+grant execute on function set_status(text,uuid,text)             to anon, authenticated;
+grant execute on function toggle_active(text)                    to anon, authenticated;
+grant execute on function leave_queue(uuid)                      to anon, authenticated;
+grant execute on function get_owner_view(text)                   to anon, authenticated;
