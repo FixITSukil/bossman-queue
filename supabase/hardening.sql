@@ -1,17 +1,19 @@
 -- ============================================================
--- BOSSMAN QUEUE — Security hardening
--- Locks down the public key: no PINs / phone numbers readable,
--- all writes go through validated functions.
--- Paste + run in Supabase SQL Editor (after schema.sql). Safe to re-run.
+-- BOSSMAN QUEUE — Production security hardening
+-- Run after schema.sql. Safe to re-run.
 -- ============================================================
 
--- Owner dashboard secret. Generate a strong random value on first setup.
--- Never commit the actual production value to GitHub.
+-- Private dashboard and kiosk secrets are generated on first setup.
+-- Never commit production values to GitHub.
 insert into app_config (key, value)
 values ('owner_pin', encode(gen_random_bytes(16), 'hex'))
 on conflict (key) do nothing;
 
--- ── Remove direct table access from the public key ───────
+insert into app_config (key, value)
+values ('kiosk_secret', encode(gen_random_bytes(16), 'hex'))
+on conflict (key) do nothing;
+
+-- ── Remove broad table access ─────────────────────────────
 drop policy if exists b_sel on barbers;
 drop policy if exists b_upd on barbers;
 drop policy if exists q_sel on queue_entries;
@@ -19,17 +21,48 @@ drop policy if exists q_upd on queue_entries;
 revoke all on barbers       from anon, authenticated;
 revoke all on queue_entries from anon, authenticated;
 
--- ── Public views (NO pin, NO phone, NO names) ────────────
-create or replace view barbers_public as
+-- ── Public read model: safe columns only ──────────────────
+drop policy if exists b_public_read on barbers;
+create policy b_public_read on barbers for select to anon, authenticated using (true);
+drop policy if exists q_public_read on queue_entries;
+create policy q_public_read on queue_entries for select to anon, authenticated using (true);
+
+grant select (id, name, is_active, avg_minutes, role, sort)
+  on barbers to anon, authenticated;
+grant select (id, barber_id, status, position, duration_minutes, called_at, created_at)
+  on queue_entries to anon, authenticated;
+
+create or replace view barbers_public with (security_invoker = true) as
   select id, name, is_active, avg_minutes, role, sort from barbers;
 
-create or replace view queue_public as
+create or replace view queue_public with (security_invoker = true) as
   select id, barber_id, status, position, duration_minutes, called_at, created_at
   from queue_entries;
 
 grant select on barbers_public, queue_public to anon, authenticated;
 
--- ── Helper: resolve a barber by secret link token ────────
+-- ── Private kiosk QR token endpoint ───────────────────────
+-- The public no-argument token endpoint from schema.sql is disabled.
+create or replace function get_qr_token(p_kiosk_secret text)
+returns json language plpgsql security definer set search_path = public, extensions as $$
+declare v_secret text; v_kiosk text; v_win bigint; v_tok text; v_secs int;
+begin
+  select value into v_kiosk from app_config where key = 'kiosk_secret';
+  if p_kiosk_secret is null or p_kiosk_secret <> v_kiosk then
+    return json_build_object('error','bad_kiosk_secret');
+  end if;
+
+  select value into v_secret from app_config where key = 'qr_secret';
+  v_win  := floor(extract(epoch from now()) / 1800)::bigint;
+  v_tok  := substring(encode(digest(v_win::text || '|' || v_secret, 'sha256'), 'hex') from 1 for 8);
+  v_secs := ((v_win + 1) * 1800 - extract(epoch from now()))::int;
+  return json_build_object('token', v_tok, 'secondsLeft', v_secs);
+end; $$;
+
+revoke execute on function get_qr_token() from public, anon, authenticated;
+grant execute on function get_qr_token(text) to anon, authenticated;
+
+-- ── Helper: resolve a worker by private secret ────────────
 create or replace function get_barber_by_pin(p_pin text)
 returns json language plpgsql security definer set search_path = public as $$
 declare b barbers%rowtype;
@@ -40,7 +73,6 @@ begin
                            'avgMinutes', b.avg_minutes, 'role', b.role);
 end; $$;
 
--- ── Barber's own queue (full detail incl. phone) — needs secret ──
 create or replace function get_queue_for_barber(p_pin text)
 returns json language plpgsql security definer set search_path = public as $$
 declare v_id text; v_rows json;
@@ -58,7 +90,6 @@ begin
   return v_rows;
 end; $$;
 
--- ── Barber actions (all require secret) ──────────────────
 create or replace function call_next(p_pin text, p_duration int)
 returns json language plpgsql security definer set search_path = public as $$
 declare v_id text; v_next uuid; v_name text;
@@ -97,7 +128,6 @@ begin
   return json_build_object('ok', true, 'isActive', v_new);
 end; $$;
 
--- ── Customer self-cancel (entry UUID is the authorisation) ──
 create or replace function leave_queue(p_entry_id uuid)
 returns json language plpgsql security definer set search_path = public as $$
 begin
@@ -106,7 +136,6 @@ begin
   return json_build_object('ok', true);
 end; $$;
 
--- ── Owner view (all workers + queues) — needs owner secret ──
 create or replace function get_owner_view(p_owner_pin text)
 returns json language plpgsql security definer set search_path = public as $$
 declare v_ok text; v_rows json;
@@ -130,10 +159,10 @@ begin
   return json_build_object('ok', true, 'workers', v_rows);
 end; $$;
 
-grant execute on function get_barber_by_pin(text)               to anon, authenticated;
-grant execute on function get_queue_for_barber(text)            to anon, authenticated;
-grant execute on function call_next(text,int)                    to anon, authenticated;
-grant execute on function set_status(text,uuid,text)             to anon, authenticated;
-grant execute on function toggle_active(text)                    to anon, authenticated;
-grant execute on function leave_queue(uuid)                      to anon, authenticated;
-grant execute on function get_owner_view(text)                   to anon, authenticated;
+grant execute on function get_barber_by_pin(text)     to anon, authenticated;
+grant execute on function get_queue_for_barber(text)  to anon, authenticated;
+grant execute on function call_next(text,int)         to anon, authenticated;
+grant execute on function set_status(text,uuid,text)  to anon, authenticated;
+grant execute on function toggle_active(text)         to anon, authenticated;
+grant execute on function leave_queue(uuid)           to anon, authenticated;
+grant execute on function get_owner_view(text)        to anon, authenticated;
