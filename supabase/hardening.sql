@@ -41,7 +41,7 @@ create or replace view queue_public with (security_invoker = true) as
 
 grant select on barbers_public, queue_public to anon, authenticated;
 
--- ── Private kiosk QR token endpoint ───────────────────────
+-- ── Private kiosk QR token endpoint (2-minute window) ────
 -- The public no-argument token endpoint from schema.sql is disabled.
 create or replace function get_qr_token(p_kiosk_secret text)
 returns json language plpgsql security definer set search_path = public, extensions as $$
@@ -53,9 +53,9 @@ begin
   end if;
 
   select value into v_secret from app_config where key = 'qr_secret';
-  v_win  := floor(extract(epoch from now()) / 1800)::bigint;
+  v_win  := floor(extract(epoch from now()) / 120)::bigint;
   v_tok  := substring(encode(digest(v_win::text || '|' || v_secret, 'sha256'), 'hex') from 1 for 8);
-  v_secs := ((v_win + 1) * 1800 - extract(epoch from now()))::int;
+  v_secs := ((v_win + 1) * 120 - extract(epoch from now()))::int;
   return json_build_object('token', v_tok, 'secondsLeft', v_secs);
 end; $$;
 
