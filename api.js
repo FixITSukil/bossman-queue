@@ -49,16 +49,16 @@ var DB = {
     });
   },
   leaveQueue: function(id) { return sbRpc("leave_queue", { p_entry_id: id }); },
-  // Barber dashboard (PIN-gated, returns full detail incl. phone)
+  // Barber dashboard (secret-link gated, returns full detail incl. phone)
   getBarberByPin: function(pin) { return sbRpc("get_barber_by_pin", { p_pin: pin }); },
   getBarberQueue: function(pin) { return sbRpc("get_queue_for_barber", { p_pin: pin }); },
   callNext: function(pin, mins) { return sbRpc("call_next", { p_pin: pin, p_duration: parseInt(mins) || 35 }); },
   setStatus: function(pin, id, status) { return sbRpc("set_status", { p_pin: pin, p_entry_id: id, p_status: status }); },
   toggleActive: function(pin) { return sbRpc("toggle_active", { p_pin: pin }); },
-  // Owner (PIN-gated)
+  // Owner (secret-link gated)
   getOwnerView: function(pin) { return sbRpc("get_owner_view", { p_owner_pin: pin }); },
   // Misc
-  getToken: function() { return sbRpc("get_qr_token", {}); },
+  getToken: function(kioskSecret) { return sbRpc("get_qr_token", { p_kiosk_secret: kioskSecret || "" }); },
   getDailyStats: function() { return sbRpc("get_daily_stats", {}); }
 };
 
@@ -76,8 +76,8 @@ function call(params) {
     case "setStatus":      return DB.setStatus(params.pin, params.id, params.status);
     case "toggleActive":   return DB.toggleActive(params.pin);
     case "getOwnerView":   return DB.getOwnerView(params.pin);
-    case "getToken":       return DB.getToken();
+    case "getToken":       return DB.getToken(params.kioskSecret);
     case "getDailyStats":  return DB.getDailyStats();
-    default:               return Promise.resolve({ error: "Unknown action" });
+    default:                return Promise.resolve({ error: "Unknown action" });
   }
 }
