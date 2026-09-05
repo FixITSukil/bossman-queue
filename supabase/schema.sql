@@ -13,7 +13,7 @@ create table if not exists barbers (
   pin         text not null,
   is_active   boolean not null default true,
   avg_minutes int not null default 35,
-  role        text not null default 'barber',   -- 'barber' | 'therapist'
+  role        text not null default 'barber',
   sort        int  not null default 0
 );
 
@@ -23,7 +23,7 @@ create table if not exists queue_entries (
   barber_name      text,
   customer_name    text,
   phone            text,
-  status           text not null default 'waiting', -- waiting|called|done|no_show
+  status           text not null default 'waiting',
   position         int,
   duration_minutes int default 0,
   called_at        timestamptz,
@@ -36,22 +36,23 @@ create table if not exists app_config (
   value text
 );
 insert into app_config (key, value) values
-  ('qr_secret', 'Boss$man-2024-stag-r0t'),
+  ('qr_secret', encode(gen_random_bytes(32), 'hex')),
   ('require_token', 'true')
 on conflict (key) do nothing;
 
--- ── Seed workers (edit names / pins here if needed) ──────
+-- ── Seed workers ─────────────────────────────────────────
+-- Production dashboard secrets are generated randomly and must never be committed to GitHub.
 insert into barbers (id, name, pin, is_active, avg_minutes, role, sort) values
-  ('barber1', 'Assaf', '1111', true, 35, 'barber',    1),
-  ('barber2', 'Karam', '2222', true, 35, 'barber',    2),
-  ('barber3', 'Jalal', '3333', true, 35, 'barber',    3),
-  ('jassy',   'Jassy', '4444', true, 35, 'therapist', 4)
+  ('barber1', 'Assaf', encode(gen_random_bytes(16), 'hex'), true, 35, 'barber',    1),
+  ('barber2', 'Karam', encode(gen_random_bytes(16), 'hex'), true, 35, 'barber',    2),
+  ('barber3', 'Jalal', encode(gen_random_bytes(16), 'hex'), true, 35, 'barber',    3),
+  ('jassy',   'Jassy', encode(gen_random_bytes(16), 'hex'), true, 35, 'therapist', 4)
 on conflict (id) do nothing;
 
 -- ── Row Level Security ───────────────────────────────────
 alter table barbers       enable row level security;
 alter table queue_entries enable row level security;
-alter table app_config    enable row level security;   -- no policies = secret stays hidden
+alter table app_config    enable row level security;
 
 drop policy if exists b_sel on barbers;
 drop policy if exists b_upd on barbers;
@@ -61,7 +62,8 @@ create policy b_sel on barbers       for select using (true);
 create policy b_upd on barbers       for update using (true);
 create policy q_sel on queue_entries for select using (true);
 create policy q_upd on queue_entries for update using (true);
--- NOTE: no INSERT policy on queue_entries → joins must go through join_queue()
+-- NOTE: no INSERT policy on queue_entries → joins must go through join_queue().
+-- Run hardening.sql immediately after this file for production.
 
 -- ── Rotating QR token ────────────────────────────────────
 create or replace function get_qr_token()
