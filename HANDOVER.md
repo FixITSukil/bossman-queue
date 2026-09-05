@@ -62,7 +62,7 @@ Never publish the production owner URL because the query-string secret authorize
 
 ## 4. Fairness & anti-abuse
 
-- **Rotating QR** — changes every 30 minutes.
+- **Rotating QR** — changes every 2 minutes.
 - **Location check** — customers must be physically near Bossman to join.
 - **Phone/device safeguards** — reduce duplicate queue joins.
 
