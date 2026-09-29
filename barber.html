@@ -90,13 +90,11 @@
         <div class="serving-phone" id="serving-phone">-</div>
       </div>
       <div class="icon-btns">
-        <a class="icon-btn" id="serving-call" href="#" title="Call customer">📞 Call</a>
-        <a class="icon-btn" id="serving-wa" href="#" target="_blank" title="WhatsApp customer">💬 WhatsApp</a>
-        <button class="icon-btn complete" id="complete-cut-btn" onclick="completeCut()" title="Complete cut and prepare review request">✅ Complete Cut</button>
+        <button class="icon-btn complete" id="complete-cut-btn" onclick="completeCut()" title="Mark this service completed">✅ Complete Cut</button>
         <button class="icon-btn no-show" onclick="markNoShow()" title="Customer did not turn up">❌ No Show</button>
       </div>
     </div>
-    <p style="font-size:0.72rem;color:rgba(14,40,24,0.7);margin-top:0.65rem;letter-spacing:0.02em;">Complete Cut marks the job done, then opens WhatsApp with a Google review request ready to send.</p>
+    <p style="font-size:0.72rem;color:rgba(14,40,24,0.7);margin-top:0.65rem;letter-spacing:0.02em;">Complete Cut marks the service done. The customer's own queue page will then show the Google review button.</p>
   </div>
 
   <div class="modal-overlay hidden" id="duration-modal">
@@ -135,13 +133,6 @@ var PIN    = new URLSearchParams(window.location.search).get("pin") || "";
 var barber = null;
 var servingId = null;
 var servingCustomer = null;
-var GOOGLE_REVIEW_URL = "https://search.google.com/local/writereview?placeid=ChIJPT94lF1NzDERlmV38by1p9Y";
-
-function whatsappDigits(phone) {
-  var digits = String(phone || "").replace(/\D/g, "");
-  if (digits.charAt(0) === "0") digits = "60" + digits.slice(1);
-  return digits;
-}
 
 function remainingCut(serving, avg) {
   if (!serving) return 0;
@@ -199,9 +190,6 @@ function renderQueue(queue) {
     servingCustomer = serving;
     document.getElementById("serving-name").textContent  = serving.customerName;
     document.getElementById("serving-phone").textContent = serving.phone;
-    var digits = whatsappDigits(serving.phone);
-    document.getElementById("serving-call").href = "tel:" + digits;
-    document.getElementById("serving-wa").href   = "https://wa.me/" + digits;
     servingSection.classList.remove("hidden");
   } else {
     servingId = null;
@@ -259,12 +247,6 @@ function markStatus(id, status) {
 function completeCut() {
   if (!servingCustomer || !barber) return;
   var customer = servingCustomer;
-  var digits = whatsappDigits(customer.phone);
-  var firstName = (customer.customerName || "").trim();
-  var reviewMessage = "Hi" + (firstName ? " " + firstName : "") +
-    ", thank you for visiting Bossman Gentleman's Club today. We'd appreciate your feedback on Google: " +
-    GOOGLE_REVIEW_URL;
-
   var btn = document.getElementById("complete-cut-btn");
   if (btn) { btn.disabled = true; btn.textContent = "Completing…"; }
 
@@ -275,11 +257,7 @@ function completeCut() {
         alert("Could not complete the cut. Please try again.");
         return;
       }
-      if (digits) {
-        window.location.href = "https://wa.me/" + digits + "?text=" + encodeURIComponent(reviewMessage);
-      } else {
-        loadQueue();
-      }
+      loadQueue();
     })
     .catch(function() {
       if (btn) { btn.disabled = false; btn.textContent = "✅ Complete Cut"; }
