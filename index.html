@@ -278,9 +278,10 @@ var QR_TOKEN = new URLSearchParams(window.location.search).get("t") || "";
 
 // ── Geofencing ── Bossman, Taipan Business Centre, USJ 10/1, Subang Jaya ──
 var GEOFENCE_ENABLED = true;
-var SHOP_LAT = 3.0454;
-var SHOP_LNG = 101.5852;
-var GEOFENCE_RADIUS_M = 250; // metres — covers the Taipan block, blocks remote joins
+var SHOP_LAT = 3.04772;
+var SHOP_LNG = 101.58375;
+var GEOFENCE_RADIUS_M = 200; // metres — centred on Bossman at 59-1 Jalan USJ 10/1
+var GEOFENCE_ACCURACY_BUFFER_M = 100; // allow for indoor/mobile GPS drift, capped below
 
 function distanceM(la1, lo1, la2, lo2) {
   var R = 6371000, t = Math.PI / 180;
@@ -298,7 +299,8 @@ function checkGeofence(cb) {
   navigator.geolocation.getCurrentPosition(function(pos) {
     btn.disabled = false; btn.textContent = "Join Queue";
     var d = distanceM(pos.coords.latitude, pos.coords.longitude, SHOP_LAT, SHOP_LNG);
-    if (d <= GEOFENCE_RADIUS_M) cb(true);
+    var accuracy = Math.min(Math.max(pos.coords.accuracy || 0, 0), GEOFENCE_ACCURACY_BUFFER_M);
+    if (d <= GEOFENCE_RADIUS_M + accuracy) cb(true);
     else cb(false, "You must be at Bossman to join the queue.");
   }, function() {
     btn.disabled = false; btn.textContent = "Join Queue";
