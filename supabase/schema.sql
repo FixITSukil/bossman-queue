@@ -46,7 +46,8 @@ insert into barbers (id, name, pin, is_active, avg_minutes, role, sort) values
   ('barber1', 'Assaf', encode(gen_random_bytes(16), 'hex'), true, 35, 'barber',    1),
   ('barber2', 'Karam', encode(gen_random_bytes(16), 'hex'), true, 35, 'barber',    2),
   ('barber3', 'Jalal', encode(gen_random_bytes(16), 'hex'), true, 35, 'barber',    3),
-  ('jassy',   'Jassy', encode(gen_random_bytes(16), 'hex'), true, 35, 'therapist', 4)
+  ('barber4', 'Ali',   encode(gen_random_bytes(16), 'hex'), true, 35, 'barber',    4),
+  ('jassy',   'Jassy', encode(gen_random_bytes(16), 'hex'), false, 35, 'therapist', 99)
 on conflict (id) do nothing;
 
 -- ── Row Level Security ───────────────────────────────────
