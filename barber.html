@@ -22,11 +22,13 @@
   .stat-label { font-size: 0.68rem; color: var(--cream-dim); margin-top: 0.15rem; letter-spacing: 0.06em; text-transform: uppercase; }
   .serving-card { background: linear-gradient(135deg, var(--gold) 0%, var(--gold-bright) 100%); border-radius: 1rem; padding: 1rem 1.25rem; }
   .serving-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(14,40,24,0.65); margin-bottom: 0.4rem; }
-  .serving-row { display: flex; align-items: center; justify-content: space-between; }
+  .serving-row { display: block; }
   .serving-name { font-family: var(--serif); font-size: 1.3rem; font-weight: 700; color: var(--pine); }
   .serving-phone { font-size: 0.85rem; color: rgba(14,40,24,0.7); margin-top: 0.1rem; }
-  .icon-btns { display: flex; gap: 0.5rem; }
-  .icon-btn { background: var(--pine); border: none; border-radius: 0.6rem; padding: 0.5rem 0.6rem; cursor: pointer; font-size: 1.1rem; line-height: 1; text-decoration: none; display: inline-flex; align-items: center; }
+  .icon-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.85rem; }
+  .icon-btn { background: var(--pine); color: var(--cream); border: none; border-radius: 0.6rem; padding: 0.7rem 0.55rem; cursor: pointer; font-size: 0.78rem; font-weight: 700; line-height: 1.15; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; font-family: var(--sans); }
+  .icon-btn.complete { color: var(--gold-bright); }
+  .icon-btn.no-show { background: rgba(14,40,24,0.78); color: #f3b0aa; }
   /* Modal */
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.65); display: flex; align-items: center; justify-content: center; padding: 1.5rem; z-index: 100; }
   .modal { background: var(--moss); border: 1px solid var(--line); border-radius: 1rem; padding: 1.5rem; width: 100%; max-width: 300px; }
@@ -88,13 +90,13 @@
         <div class="serving-phone" id="serving-phone">-</div>
       </div>
       <div class="icon-btns">
-        <a class="icon-btn" id="serving-call" href="#" title="Call">📞</a>
-        <a class="icon-btn" id="serving-wa" href="#" target="_blank" title="WhatsApp">💬</a>
-        <button class="icon-btn" onclick="markStatus(servingId, 'done')" title="Done">✅</button>
-        <button class="icon-btn" onclick="markStatus(servingId, 'no_show')" title="No show">❌</button>
+        <a class="icon-btn" id="serving-call" href="#" title="Call customer">📞 Call</a>
+        <a class="icon-btn" id="serving-wa" href="#" target="_blank" title="WhatsApp customer">💬 WhatsApp</a>
+        <button class="icon-btn complete" id="complete-cut-btn" onclick="completeCut()" title="Complete cut and prepare review request">✅ Complete Cut</button>
+        <button class="icon-btn no-show" onclick="markNoShow()" title="Customer did not turn up">❌ No Show</button>
       </div>
     </div>
-    <p style="font-size:0.72rem;color:rgba(14,40,24,0.7);margin-top:0.6rem;letter-spacing:0.02em;">Not here? Tap 📞 to call or 💬 to WhatsApp them.</p>
+    <p style="font-size:0.72rem;color:rgba(14,40,24,0.7);margin-top:0.65rem;letter-spacing:0.02em;">Complete Cut marks the job done, then opens WhatsApp with a Google review request ready to send.</p>
   </div>
 
   <div class="modal-overlay hidden" id="duration-modal">
@@ -132,6 +134,14 @@
 var PIN    = new URLSearchParams(window.location.search).get("pin") || "";
 var barber = null;
 var servingId = null;
+var servingCustomer = null;
+var GOOGLE_REVIEW_URL = "https://search.google.com/local/writereview?placeid=ChIJPT94lF1NzDERlmV38by1p9Y";
+
+function whatsappDigits(phone) {
+  var digits = String(phone || "").replace(/\D/g, "");
+  if (digits.charAt(0) === "0") digits = "60" + digits.slice(1);
+  return digits;
+}
 
 function remainingCut(serving, avg) {
   if (!serving) return 0;
@@ -186,14 +196,16 @@ function renderQueue(queue) {
   var servingSection = document.getElementById("serving-section");
   if (serving) {
     servingId = serving.id;
+    servingCustomer = serving;
     document.getElementById("serving-name").textContent  = serving.customerName;
     document.getElementById("serving-phone").textContent = serving.phone;
-    var digits = String(serving.phone).replace(/\D/g, "");
+    var digits = whatsappDigits(serving.phone);
     document.getElementById("serving-call").href = "tel:" + digits;
     document.getElementById("serving-wa").href   = "https://wa.me/" + digits;
     servingSection.classList.remove("hidden");
   } else {
     servingId = null;
+    servingCustomer = null;
     servingSection.classList.add("hidden");
   }
 
@@ -216,10 +228,6 @@ function renderQueue(queue) {
         '<div class="queue-num">' + (i + 1) + '</div>' +
         '<div><div class="queue-name">' + entry.customerName + '</div>' +
         '<div class="queue-phone">~' + waitMins + ' min wait · ' + entry.phone + '</div></div>' +
-      '</div>' +
-      '<div class="queue-actions">' +
-        '<button class="q-btn" onclick="markStatus(\'' + entry.id + '\',\'done\')">✅</button>' +
-        '<button class="q-btn" onclick="markStatus(\'' + entry.id + '\',\'no_show\')">❌</button>' +
       '</div>';
     list.appendChild(item);
   });
@@ -246,6 +254,44 @@ function markStatus(id, status) {
   if (!id || !barber) return;
   call({ action: "setStatus", pin: PIN, id: id, status: status })
     .then(loadQueue).catch(function() {});
+}
+
+function completeCut() {
+  if (!servingCustomer || !barber) return;
+  var customer = servingCustomer;
+  var digits = whatsappDigits(customer.phone);
+  var firstName = (customer.customerName || "").trim();
+  var reviewMessage = "Hi" + (firstName ? " " + firstName : "") +
+    ", thank you for visiting Bossman Gentleman's Club today. We'd appreciate your feedback on Google: " +
+    GOOGLE_REVIEW_URL;
+
+  var btn = document.getElementById("complete-cut-btn");
+  if (btn) { btn.disabled = true; btn.textContent = "Completing…"; }
+
+  call({ action: "setStatus", pin: PIN, id: customer.id, status: "done" })
+    .then(function(res) {
+      if (!res || res.error) {
+        if (btn) { btn.disabled = false; btn.textContent = "✅ Complete Cut"; }
+        alert("Could not complete the cut. Please try again.");
+        return;
+      }
+      if (digits) {
+        window.location.href = "https://wa.me/" + digits + "?text=" + encodeURIComponent(reviewMessage);
+      } else {
+        loadQueue();
+      }
+    })
+    .catch(function() {
+      if (btn) { btn.disabled = false; btn.textContent = "✅ Complete Cut"; }
+      alert("Could not complete the cut. Please try again.");
+    });
+}
+
+function markNoShow() {
+  if (!servingCustomer || !barber) return;
+  var name = servingCustomer.customerName || "this customer";
+  if (!confirm("Mark " + name + " as No Show?")) return;
+  markStatus(servingCustomer.id, "no_show");
 }
 function toggleActive() {
   if (!barber) return;
