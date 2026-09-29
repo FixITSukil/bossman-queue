@@ -41,6 +41,10 @@ var DB = {
     return sbSelect("queue_public?barber_id=eq." + encodeURIComponent(barberId) + "&status=in.(waiting,called)&order=position.asc")
       .then(function(a) { return (a || []).map(mapPublicEntry); });
   },
+  getEntry: function(entryId) {
+    return sbSelect("queue_public?id=eq." + encodeURIComponent(entryId) + "&limit=1")
+      .then(function(a) { return (a && a[0]) ? mapPublicEntry(a[0]) : null; });
+  },
   // Joins / customer self-cancel
   joinQueue: function(p) {
     return sbRpc("join_queue", {
@@ -68,6 +72,7 @@ function call(params) {
     case "getBarbers":     return DB.getBarbers();
     case "getAllBarbers":  return DB.getAllBarbers();
     case "getQueue":       return DB.getQueue(params.barberId);
+    case "getEntry":       return DB.getEntry(params.id);
     case "joinQueue":      return DB.joinQueue(params);
     case "leaveQueue":     return DB.leaveQueue(params.id);
     case "getBarberByPin": return DB.getBarberByPin(params.pin);
