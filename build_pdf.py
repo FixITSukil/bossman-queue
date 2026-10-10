@@ -76,7 +76,7 @@ row("Website / menu", "...github.io/bossman-queue/website.html")
 # --- Daily use ---
 section("Daily use")
 subhead("OPEN")
-bullet("•  Open the Tablet link fullscreen at the counter (rotating QR shows).")
+bullet("•  Open the Tablet link fullscreen (the QR stays the same).")
 bullet("•  Each worker opens their own dashboard link on their phone.")
 subhead("SERVE")
 bullet("•  Customer scans QR → picks worker → enters name + WhatsApp → joins.")
@@ -87,15 +87,15 @@ subhead("CLOSE")
 bullet("•  Nothing to do. Queue auto-resets at 11 PM; daily totals are saved.")
 
 # --- Fairness ---
-section("Built-in fairness (always on)")
-bullet("•  QR changes every 30 min — screenshots can't be reused later.")
+section("Queue safeguards")
+bullet("•  The QR is permanent and can also be printed.")
 bullet("•  Customers must be at the shop to join (location check).")
 bullet("•  One join per phone, and one per device every 30 minutes.")
 
 # --- Troubleshooting ---
 section("If something's off")
 row("Tablet QR blank", "Check Wi-Fi, refresh the page.")
-row("'QR has expired'", "Old screenshot — scan the live tablet QR again.")
+row("'Queue is closed'", "Joining runs from 11 AM to 10:45 PM Malaysia time.")
 row("'You must be at Bossman'", "Allow location in the browser.")
 row("Owner page empty", "Make sure link ends with ?pin=8888")
 row("Worker page empty", "Use the correct link with their PIN.")

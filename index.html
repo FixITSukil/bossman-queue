@@ -172,7 +172,7 @@
   </details>
 </section>
 
-<script src="api.js?v=20261010c"></script>
+<script src="api.js?v=20261010e"></script>
 <script src="pwa.js?v=20261010d"></script>
 <script>
 var barbers = [];
@@ -366,7 +366,6 @@ function renderBarbers() {
 
 var THROTTLE_MIN = 30; // a device may only join once every 30 minutes
 var LAST_JOIN_KEY = "bossman_last_join";
-var QR_TOKEN = new URLSearchParams(window.location.search).get("t") || "";
 
 // ── Geofencing ── Bossman, Taipan Business Centre, USJ 10/1, Subang Jaya ──
 var GEOFENCE_ENABLED = true;
@@ -425,19 +424,13 @@ function joinQueue() {
   });
 }
 
-function expiredMsg(errEl) {
-  errEl.textContent = "This QR has expired. Please scan the latest code at the counter.";
-  errEl.classList.remove("hidden");
-}
-
 function doJoin(name, phone, errEl) {
   if (!joiningOpen()) { showPick(); updateHoursUI(); return; }
   var btn = document.getElementById("btn-join");
   btn.disabled = true; btn.textContent = "Joining…";
-  call({ action: "joinQueue", barberId: selectedBarber.id, barberName: selectedBarber.name, customerName: name, phone: phone, t: QR_TOKEN })
+  call({ action: "joinQueue", barberId: selectedBarber.id, barberName: selectedBarber.name, customerName: name, phone: phone })
     .then(function(res) {
       btn.disabled = false; btn.textContent = "Join Queue";
-      if (res && res.error === "expired_qr") { expiredMsg(errEl); return; }
       if (!res || res.error) { errEl.textContent = res.error || "Something went wrong."; errEl.classList.remove("hidden"); return; }
       myEntryId  = res.id;
       myBarberId = selectedBarber.id;
@@ -447,7 +440,7 @@ function doJoin(name, phone, errEl) {
       var wantsFacial = !document.getElementById("facial-row").classList.contains("hidden")
                         && document.getElementById("inp-facial").checked;
       if (wantsFacial && facialTherapist) {
-        call({ action: "joinQueue", barberId: facialTherapist.id, barberName: facialTherapist.name, customerName: name + " (facial)", phone: phone, t: QR_TOKEN })
+        call({ action: "joinQueue", barberId: facialTherapist.id, barberName: facialTherapist.name, customerName: name + " (facial)", phone: phone })
           .then(function(r2) {
             if (r2 && r2.id) { myFacialEntryId = r2.id; myFacialBarberId = facialTherapist.id; saveEntry(selectedBarber); }
           }).catch(function() {});

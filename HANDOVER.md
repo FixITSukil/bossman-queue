@@ -12,7 +12,7 @@ Everything runs on hosted web services; there is nothing to install on customer 
 
 | Who | Link | Notes |
 |-----|------|-------|
-| **Tablet at counter** | `https://fixitsukil.github.io/bossman-queue/qr-display.html` | Shows the rotating QR. Keep this open fullscreen on the tablet during business hours. |
+| **Tablet at counter** | `https://fixitsukil.github.io/bossman-queue/qr-display.html` | Shows the permanent QR. Keep this open fullscreen on the tablet during business hours. |
 | **Customer** | `https://fixitsukil.github.io/bossman-queue/` | Opens when a customer scans the QR. |
 | **Owner** | `https://fixitsukil.github.io/bossman-queue/owner.html?pin=<OWNER_SECRET>` | Live view of all queues + today's totals. |
 | **Website / menu** | `https://fixitsukil.github.io/bossman-queue/website.html` | Premium price-list page. |
@@ -62,7 +62,7 @@ Never publish the production owner URL because the query-string secret authorize
 
 ## 4. Fairness & anti-abuse
 
-- **Rotating QR** — changes every 2 minutes.
+- **Permanent QR** — the same code can stay on the tablet or be printed from `shop-qr.png`.
 - **Location check** — customers must be physically near Bossman to join.
 - **Phone/device safeguards** — reduce duplicate queue joins.
 
@@ -88,15 +88,7 @@ values ('barber4', 'New Name', '<LONG_RANDOM_SECRET>', true, 35, 'barber', 5);
 
 Use `role = 'therapist'` for a therapist.
 
-### Temporarily disable QR-token enforcement for testing
-```sql
-update app_config set value = 'false' where key = 'require_token';
-```
-
-Turn it back on immediately after testing:
-```sql
-update app_config set value = 'true' where key = 'require_token';
-```
+The shop QR no longer needs a kiosk secret or token refresh. The QR join page still checks location and the database enforces joining hours and barber availability.
 
 ---
 
@@ -127,9 +119,8 @@ The QR page also requests a browser screen wake lock when supported, with iPad A
 
 | Problem | Fix |
 |---------|-----|
-| QR blank / can't reach server | Check shop Wi-Fi, then refresh the display. Check that the Supabase project is active. |
+| QR image blank | Check the tablet's connection and refresh the display. The printable image is also at `shop-qr.png`. |
 | Customer is physically inside but location is rejected | Allow location access in the browser and retry. |
-| QR expired | Scan the current live QR again. |
 | Worker dashboard says invalid PIN/secret | Use that worker's current private dashboard URL. |
 | Owner dashboard fails | Confirm the private owner URL contains the current owner secret. |
 
