@@ -70,6 +70,7 @@
   .review-box { margin-top: 1.25rem; padding: 1.1rem; background: var(--pine); border: 1px solid var(--gold); border-radius: 0.85rem; }
   .review-box p { color: var(--cream-dim); font-size: 0.82rem; line-height: 1.5; margin-bottom: 0.85rem; }
   .review-btn { display: block; width: 100%; text-decoration: none; text-align: center; }
+  .rejoin-link { display: block; color: var(--gold); margin-top: 1rem; text-align: center; font-size: 0.86rem; }
   .cancel-box { margin-top: 1.25rem; padding: 1.1rem; background: var(--pine); border: 1px solid var(--gold); border-radius: 0.85rem; }
   .cancel-box p { color: var(--cream-dim); font-size: 0.88rem; line-height: 1.5; margin-bottom: 0.9rem; }
   .cancel-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
@@ -145,6 +146,7 @@
     <div class="review-box hidden" id="review-box">
       <p>Thanks for visiting Bossman. If you enjoyed your service, we'd really appreciate a Google review.</p>
       <a class="btn-gold btn-full review-btn" id="review-link" href="#" target="_blank" rel="noopener">⭐ Review Bossman on Google</a>
+      <a class="rejoin-link" href="index.html">Join the queue again →</a>
     </div>
     <div class="cancel-box hidden" id="cancel-box">
       <p>We're sorry, your barber has cancelled your queue entry. Please WhatsApp or call Bossman at <strong>011-1165 1608</strong> for an explanation.</p>
@@ -240,6 +242,10 @@ function saveEntry(barber) {
   localStorage.setItem(STORE_KEY, JSON.stringify({ entryId: myEntryId, id: barber.id, name: barber.name, avgMinutes: barber.avgMinutes || AVG, facialEntryId: myFacialEntryId, facialBarberId: myFacialBarberId }));
 }
 function clearEntry() { localStorage.removeItem(STORE_KEY); }
+function releaseCompletedEntry() {
+  clearEntry();
+  localStorage.removeItem(LAST_JOIN_KEY);
+}
 
 // On load, if the customer already joined earlier, jump back to their status
 function resumeEntry() {
@@ -259,7 +265,12 @@ function resumeEntry() {
 
   call({ action: "getEntry", id: saved.entryId }).then(function(entry) {
     if (!entry) { clearEntry(); showPick(); loadBarbers(); return; }
-    if (entry.status === "done") { showReviewComplete(); return; }
+    if (entry.status === "done") {
+      releaseCompletedEntry();
+      showPick();
+      loadBarbers();
+      return;
+    }
     if (entry.status === "cancelled_by_customer") { showCustomerCancelled(); return; }
     if (entry.status === "cancelled_by_barber") { showBarberCancelled(); return; }
     if (entry.status === "no_show") { showQueueEnded(); return; }
@@ -364,7 +375,7 @@ function renderBarbers() {
   }
 }
 
-var THROTTLE_MIN = 30; // a device may only join once every 30 minutes
+var THROTTLE_MIN = 30; // prevent rapid repeat joins until a service is completed
 var LAST_JOIN_KEY = "bossman_last_join";
 
 // ── Geofencing ── Bossman, Taipan Business Centre, USJ 10/1, Subang Jaya ──
@@ -488,6 +499,7 @@ function showYourTurn() {
 
 function showReviewComplete() {
   if (refreshInterval) clearInterval(refreshInterval);
+  releaseCompletedEntry();
   document.getElementById("cancel-box").classList.add("hidden");
   document.getElementById("self-cancel-box").classList.add("hidden");
   document.getElementById("conf-icon").textContent = "✨";

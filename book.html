@@ -175,6 +175,7 @@ function checkExistingEntry() {
       document.getElementById("join-form").classList.add("hidden");
     } else {
       localStorage.removeItem(storeKey);
+      if (entry && entry.status === "done") localStorage.removeItem("bossman_last_join");
       document.getElementById("join-form").classList.remove("hidden");
     }
     updateButton();
