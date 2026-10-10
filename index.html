@@ -156,7 +156,7 @@
       </div>
     </div>
     <div class="self-cancel-box hidden" id="self-cancel-box">
-      <p>Your place has been released. You can join again if your plans change.</p>
+      <p>Your place has been released. If you need to join again, please wait 30 minutes from your last join or ask staff for help.</p>
       <a href="book.html">Join the queue again</a>
     </div>
     <button class="btn-back cancel-booking-btn" id="btn-leave" onclick="leaveQueue()" style="margin-top:1.25rem;display:block;width:100%;color:var(--cream-dim);">Cancel my booking</button>
@@ -174,17 +174,19 @@
   </details>
 </section>
 
-<script src="api.js?v=20261010e"></script>
+<script src="api.js?v=20261010g"></script>
 <script src="pwa.js?v=20261010d"></script>
 <script>
 var barbers = [];
 var selectedBarber = null;
 var queueCounts = {};
 var myEntryId = null;
+var myCancelToken = null;
 var myBarberId = null;
 var refreshInterval = null;
 var facialTherapist = null;
 var myFacialEntryId = null;
+var myFacialCancelToken = null;
 var myFacialBarberId = null;
 var GOOGLE_REVIEW_URL = "https://search.google.com/local/writereview?placeid=ChIJPT94lF1NzDERlmV38by1p9Y";
 document.getElementById("review-link").href = GOOGLE_REVIEW_URL;
@@ -239,7 +241,7 @@ function updateHoursUI() {
 
 var STORE_KEY = "bossman_queue";
 function saveEntry(barber) {
-  localStorage.setItem(STORE_KEY, JSON.stringify({ entryId: myEntryId, id: barber.id, name: barber.name, avgMinutes: barber.avgMinutes || AVG, facialEntryId: myFacialEntryId, facialBarberId: myFacialBarberId }));
+  localStorage.setItem(STORE_KEY, JSON.stringify({ entryId: myEntryId, cancelToken: myCancelToken, id: barber.id, name: barber.name, avgMinutes: barber.avgMinutes || AVG, facialEntryId: myFacialEntryId, facialCancelToken: myFacialCancelToken, facialBarberId: myFacialBarberId }));
 }
 function clearEntry() { localStorage.removeItem(STORE_KEY); }
 function releaseCompletedEntry() {
@@ -256,10 +258,13 @@ function resumeEntry() {
 
   selectedBarber = { id: saved.id, name: saved.name, avgMinutes: saved.avgMinutes || AVG };
   myEntryId  = saved.entryId;
+  myCancelToken = saved.cancelToken || null;
   myBarberId = saved.id;
   myFacialEntryId  = saved.facialEntryId || null;
+  myFacialCancelToken = saved.facialCancelToken || null;
   myFacialBarberId = saved.facialBarberId || null;
-  document.getElementById("conf-barber").textContent = saved.name;
+  syncCancelButton();
+  document.getElementById("conf-barber").textContent = saved.name + (myFacialEntryId ? " + Facial (Jassy)" : "");
   document.getElementById("step-pick").classList.add("hidden");
   document.getElementById("step-done").classList.remove("hidden");
 
@@ -284,6 +289,12 @@ function showPick() {
   document.getElementById("step-pick").classList.remove("hidden");
   document.getElementById("step-form").classList.add("hidden");
   document.getElementById("step-done").classList.add("hidden");
+}
+
+function syncCancelButton() {
+  var button = document.getElementById("btn-leave");
+  button.disabled = !myCancelToken || (!!myFacialEntryId && !myFacialCancelToken);
+  button.textContent = button.disabled ? "Ask staff to cancel this older booking" : "Cancel my booking";
 }
 
 function showForm(barber) {
@@ -444,6 +455,7 @@ function doJoin(name, phone, errEl) {
       btn.disabled = false; btn.textContent = "Join Queue";
       if (!res || res.error) { errEl.textContent = res.error || "Something went wrong."; errEl.classList.remove("hidden"); return; }
       myEntryId  = res.id;
+      myCancelToken = res.cancelToken;
       myBarberId = selectedBarber.id;
       localStorage.setItem(LAST_JOIN_KEY, Date.now()); // start the 30-min device lock
 
@@ -453,12 +465,19 @@ function doJoin(name, phone, errEl) {
       if (wantsFacial && facialTherapist) {
         call({ action: "joinQueue", barberId: facialTherapist.id, barberName: facialTherapist.name, customerName: name + " (facial)", phone: phone })
           .then(function(r2) {
-            if (r2 && r2.id) { myFacialEntryId = r2.id; myFacialBarberId = facialTherapist.id; saveEntry(selectedBarber); }
-          }).catch(function() {});
+            if (!r2 || !r2.id) throw new Error("Facial queue join failed.");
+            myFacialEntryId = r2.id;
+            myFacialCancelToken = r2.cancelToken;
+            myFacialBarberId = facialTherapist.id;
+            saveEntry(selectedBarber);
+            syncCancelButton();
+            document.getElementById("conf-barber").textContent = selectedBarber.name + " + Facial (Jassy)";
+          }).catch(function() { alert("Your haircut place is confirmed, but the facial could not be added. Please ask staff for help."); });
       }
 
       saveEntry(selectedBarber);
-      document.getElementById("conf-barber").textContent = selectedBarber.name + (wantsFacial ? " + Facial (Jassy)" : "");
+      syncCancelButton();
+      document.getElementById("conf-barber").textContent = selectedBarber.name;
       document.getElementById("conf-pos").textContent    = "#" + res.position;
       document.getElementById("conf-ahead").textContent  = res.ahead;
       document.getElementById("conf-wait").textContent   = "~" + (res.ahead * AVG) + "m";
@@ -527,6 +546,7 @@ function showQueueEnded() {
 
 function showBarberCancelled() {
   if (refreshInterval) clearInterval(refreshInterval);
+  localStorage.removeItem(LAST_JOIN_KEY);
   document.getElementById("conf-icon").textContent = "💬";
   document.getElementById("conf-title").textContent = "Sorry, your queue entry was cancelled";
   document.getElementById("conf-badge").classList.add("hidden");
@@ -605,18 +625,24 @@ function refreshPosition() {
 
 function leaveQueue() {
   if (!myEntryId) return;
+  if (!myCancelToken || (myFacialEntryId && !myFacialCancelToken)) {
+    alert("Please ask staff to cancel this older booking.");
+    return;
+  }
   if (!confirm("Cancel your queue booking with " + (selectedBarber ? selectedBarber.name : "your barber") + "? You will lose your place.")) return;
   var button = document.getElementById("btn-leave");
   button.disabled = true; button.textContent = "Cancelling…";
-  var calls = [ call({ action: "leaveQueue", id: myEntryId }) ];
-  if (myFacialEntryId) calls.push(call({ action: "leaveQueue", id: myFacialEntryId }));
+  var calls = [ call({ action: "leaveQueue", id: myEntryId, token: myCancelToken }) ];
+  if (myFacialEntryId) calls.push(call({ action: "leaveQueue", id: myFacialEntryId, token: myFacialCancelToken }));
   Promise.all(calls).then(function(results) {
-    if (!results[0] || results[0].error) throw new Error(results[0] && results[0].error || "Could not cancel. Please try again.");
+    if (results.some(function(result) { return !result || result.error || result.ok !== true; })) {
+      throw new Error("Could not cancel every queue place. Please ask staff for help.");
+    }
     showCustomerCancelled();
   }).catch(function() {
     alert("Could not cancel your booking. Please try again or contact Bossman.");
   }).finally(function() {
-    button.disabled = false; button.textContent = "Cancel my booking";
+    syncCancelButton();
   });
 }
 
