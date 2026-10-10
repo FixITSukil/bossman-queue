@@ -3,8 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0a1f14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Bossman Queue">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Bossman Gentleman's Club Barbershop</title>
 <link rel="stylesheet" href="brand.css">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
   body { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1.5rem; }
   .wrap { width: 100%; max-width: 380px; }
@@ -70,6 +76,14 @@
   .cancel-actions a { text-decoration: none; text-align: center; padding: 0.75rem 0.4rem; border-radius: 0.55rem; font-size: 0.85rem; font-weight: 700; }
   .cancel-actions .whatsapp { background: var(--gold); color: var(--pine); }
   .cancel-actions .call { border: 1px solid var(--gold); color: var(--gold-bright); }
+  .self-cancel-box { margin-top: 1.25rem; padding: 1.1rem; background: var(--pine); border: 1px solid var(--line); border-radius: 0.85rem; }
+  .self-cancel-box p { color: var(--cream-dim); font-size: 0.88rem; line-height: 1.5; }
+  .self-cancel-box a { display: inline-block; color: var(--gold-bright); margin-top: 0.8rem; }
+  .cancel-booking-btn { border: 1px solid var(--gold); border-radius: 0.55rem; padding: 0.75rem; }
+  .install-card { width: 100%; max-width: 380px; margin-top: 1rem; padding: 0.8rem 1rem; background: var(--moss); border: 1px solid var(--line); border-radius: 0.75rem; }
+  .install-card summary { color: var(--gold-bright); cursor: pointer; font-size: 0.85rem; }
+  .install-card p { color: var(--cream-dim); font-size: 0.8rem; line-height: 1.5; margin-top: 0.6rem; }
+  .install-card button { width: 100%; margin-bottom: 0.6rem; padding: 0.65rem; font: inherit; }
 </style>
 </head>
 <body>
@@ -134,13 +148,27 @@
         <a class="call" href="tel:01111651608">Call Bossman</a>
       </div>
     </div>
-    <button class="btn-back" id="btn-leave" onclick="leaveQueue()" style="margin-top:1.25rem;display:block;width:100%;color:var(--cream-dim);">Leave Queue</button>
+    <div class="self-cancel-box hidden" id="self-cancel-box">
+      <p>Your place has been released. You can join again if your plans change.</p>
+      <a href="book.html">Join the queue again</a>
+    </div>
+    <button class="btn-back cancel-booking-btn" id="btn-leave" onclick="leaveQueue()" style="margin-top:1.25rem;display:block;width:100%;color:var(--cream-dim);">Cancel my booking</button>
   </div>
 </div>
 
 </div>
 
+<section class="install-card" id="install-card">
+  <button class="btn-gold hidden" id="install-button" type="button">Install Bossman app</button>
+  <details>
+    <summary>Add Bossman to your Home Screen</summary>
+    <p><strong>iPhone:</strong> Open this link in Safari, tap Share, then Add to Home Screen and Add.</p>
+    <p><strong>Android:</strong> Open this link in Chrome, then use Install app or Add to Home screen from the browser menu.</p>
+  </details>
+</section>
+
 <script src="api.js?v=20261010c"></script>
+<script src="pwa.js?v=20261010d"></script>
 <script>
 var barbers = [];
 var selectedBarber = null;
@@ -200,6 +228,7 @@ function resumeEntry() {
   call({ action: "getEntry", id: saved.entryId }).then(function(entry) {
     if (!entry) { clearEntry(); showPick(); loadBarbers(); return; }
     if (entry.status === "done") { showReviewComplete(); return; }
+    if (entry.status === "cancelled_by_customer") { showCustomerCancelled(); return; }
     if (entry.status === "cancelled_by_barber") { showBarberCancelled(); return; }
     if (entry.status === "no_show") { showQueueEnded(); return; }
     refreshPosition();
@@ -405,6 +434,7 @@ function doJoin(name, phone, errEl) {
 function resetCustomerStatePanels() {
   document.getElementById("review-box").classList.add("hidden");
   document.getElementById("cancel-box").classList.add("hidden");
+  document.getElementById("self-cancel-box").classList.add("hidden");
   document.getElementById("conf-badge").classList.remove("hidden");
   document.getElementById("conf-stats").classList.remove("hidden");
   document.getElementById("conf-refresh").classList.remove("hidden");
@@ -412,19 +442,21 @@ function resetCustomerStatePanels() {
 
 function showYourTurn() {
   document.getElementById("cancel-box").classList.add("hidden");
+  document.getElementById("self-cancel-box").classList.add("hidden");
   document.getElementById("conf-icon").textContent = "💈";
   document.getElementById("conf-title").textContent = "It's your turn!";
   document.getElementById("conf-pos").textContent = "GO";
   document.querySelector("#conf-badge .pos-label").textContent = "please proceed to your barber";
   document.getElementById("conf-stats").classList.add("hidden");
   document.getElementById("conf-refresh").textContent = "Keep this page open until your service is completed";
-  document.getElementById("btn-leave").classList.add("hidden");
+  document.getElementById("btn-leave").classList.remove("hidden");
   document.getElementById("review-box").classList.add("hidden");
 }
 
 function showReviewComplete() {
   if (refreshInterval) clearInterval(refreshInterval);
   document.getElementById("cancel-box").classList.add("hidden");
+  document.getElementById("self-cancel-box").classList.add("hidden");
   document.getElementById("conf-icon").textContent = "✨";
   document.getElementById("conf-title").textContent = "Thanks for visiting Bossman!";
   document.getElementById("conf-badge").classList.add("hidden");
@@ -437,6 +469,7 @@ function showReviewComplete() {
 function showQueueEnded() {
   if (refreshInterval) clearInterval(refreshInterval);
   document.getElementById("cancel-box").classList.add("hidden");
+  document.getElementById("self-cancel-box").classList.add("hidden");
   document.getElementById("conf-icon").textContent = "👋";
   document.getElementById("conf-title").textContent = "Your queue entry has ended";
   document.getElementById("conf-badge").classList.add("hidden");
@@ -456,7 +489,21 @@ function showBarberCancelled() {
   document.getElementById("conf-refresh").classList.add("hidden");
   document.getElementById("btn-leave").classList.add("hidden");
   document.getElementById("review-box").classList.add("hidden");
+  document.getElementById("self-cancel-box").classList.add("hidden");
   document.getElementById("cancel-box").classList.remove("hidden");
+}
+
+function showCustomerCancelled() {
+  if (refreshInterval) clearInterval(refreshInterval);
+  document.getElementById("conf-icon").textContent = "👋";
+  document.getElementById("conf-title").textContent = "Your booking is cancelled";
+  document.getElementById("conf-badge").classList.add("hidden");
+  document.getElementById("conf-stats").classList.add("hidden");
+  document.getElementById("conf-refresh").classList.add("hidden");
+  document.getElementById("btn-leave").classList.add("hidden");
+  document.getElementById("review-box").classList.add("hidden");
+  document.getElementById("cancel-box").classList.add("hidden");
+  document.getElementById("self-cancel-box").classList.remove("hidden");
 }
 
 function refreshPosition() {
@@ -470,6 +517,10 @@ function refreshPosition() {
     }
     if (entryStatus.status === "done") {
       showReviewComplete();
+      return;
+    }
+    if (entryStatus.status === "cancelled_by_customer") {
+      showCustomerCancelled();
       return;
     }
     if (entryStatus.status === "cancelled_by_barber") {
@@ -509,23 +560,18 @@ function refreshPosition() {
 
 function leaveQueue() {
   if (!myEntryId) return;
-  if (!confirm("Are you sure you want to leave the queue?")) return;
-  document.getElementById("btn-leave").textContent = "Leaving…";
+  if (!confirm("Cancel your queue booking with " + (selectedBarber ? selectedBarber.name : "your barber") + "? You will lose your place.")) return;
+  var button = document.getElementById("btn-leave");
+  button.disabled = true; button.textContent = "Cancelling…";
   var calls = [ call({ action: "leaveQueue", id: myEntryId }) ];
   if (myFacialEntryId) calls.push(call({ action: "leaveQueue", id: myFacialEntryId }));
-  Promise.all(calls).then(function() {
-    clearInterval(refreshInterval);
-    clearEntry();
-    document.getElementById("conf-icon").textContent = "👋";
-    document.getElementById("conf-title").textContent = "You've left the queue";
-    document.getElementById("conf-badge").classList.add("hidden");
-    document.getElementById("conf-stats").classList.add("hidden");
-    document.getElementById("conf-refresh").classList.add("hidden");
-    var b = document.getElementById("btn-leave");
-    b.textContent = "← Choose a barber";
-    b.onclick = function() { location.reload(); };
+  Promise.all(calls).then(function(results) {
+    if (!results[0] || results[0].error) throw new Error(results[0] && results[0].error || "Could not cancel. Please try again.");
+    showCustomerCancelled();
   }).catch(function() {
-    document.getElementById("btn-leave").textContent = "Leave Queue";
+    alert("Could not cancel your booking. Please try again or contact Bossman.");
+  }).finally(function() {
+    button.disabled = false; button.textContent = "Cancel my booking";
   });
 }
 

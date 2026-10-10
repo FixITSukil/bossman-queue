@@ -13,3 +13,7 @@ Apply the SQL migrations in `supabase/migrations/` in timestamp order before pub
 Estimated waits use each barber's average minutes and the remaining time of any customer currently being served. They are estimates; actual service length and queue changes can affect them.
 
 Barbers can cancel a waiting or called customer separately from marking a no-show. The customer's queue page then shows an apology and links to WhatsApp or call Bossman at 011-1165 1608. The page checks for status changes every 10 seconds while open and shows the cancellation again if the customer returns to that queue page on the same device.
+
+The barber's Cancel action asks for explicit No/Yes confirmation before changing the queue. A customer can cancel their own place from the queue status page, including after being called. Their place is released and they can join again if needed. The remote join endpoint accepts only one active queue place per phone number across all barbers, with Malaysian 0 and 60 prefixes treated as the same number. The booking page also hides its join form while a saved active entry exists on the device.
+
+The customer pages are installable as a home screen web app. Android Chrome offers an install option; iPhone customers use Safari's Share menu and Add to Home Screen. The live queue still needs an internet connection. The app manifest, service worker, and icons are in the repository root.
