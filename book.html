@@ -93,6 +93,7 @@ var barbers = [];
 var queueSnapshot = {};
 var joinButton = document.getElementById("join-button");
 var joining = false;
+var availabilityLoading = false;
 var storeKey = "bossman_queue";
 var existingEntry = null;
 
@@ -127,7 +128,7 @@ function queueSummary(barber) {
 }
 function renderBarbers() {
   var target = document.getElementById("barbers"); target.textContent = "";
-  if (!barbers.length) { target.innerHTML = '<p class="muted">No barbers available right now.</p>'; return; }
+  if (!barbers.length) { target.innerHTML = '<p class="muted">No barbers are taking new customers right now. Please check back shortly.</p>'; return; }
   barbers.forEach(function(barber) {
     var button = document.createElement("button"); button.type = "button";
     button.className = "choice" + (selectedBarber && selectedBarber.id === barber.id ? " selected" : "");
@@ -144,6 +145,21 @@ function refreshQueues() {
   Promise.all(barbers.map(function(barber) {
     return DB.getQueue(barber.id).then(function(queue) { queueSnapshot[barber.id] = queue; }).catch(function() {});
   })).then(renderBarbers);
+}
+function refreshAvailability() {
+  if (availabilityLoading) return;
+  availabilityLoading = true;
+  DB.getBarbers().then(function(items) {
+    barbers = items.filter(function(barber) { return barber.role === "barber"; });
+    if (selectedBarber && !barbers.some(function(barber) { return barber.id === selectedBarber.id; })) {
+      selectedBarber = null;
+      showError("That barber has stopped taking new customers. Please choose another barber when available.");
+    }
+    renderBarbers();
+    refreshQueues();
+    updateButton();
+  }).catch(function() { showError("Could not refresh barber availability. Please try again."); })
+    .finally(function() { availabilityLoading = false; });
 }
 function showError(message) {
   var target = document.getElementById("form-error"); target.textContent = message; target.classList.remove("hidden");
@@ -189,13 +205,10 @@ document.getElementById("cancel-existing").onclick = function() {
   }).finally(function() { button.disabled = false; button.textContent = "Cancel my booking"; });
 };
 
-DB.getBarbers().then(function(items) {
-  barbers = items.filter(function(barber) { return barber.role === "barber"; });
-  renderBarbers(); refreshQueues();
-}).catch(function() { showError("Could not load the barbers. Please refresh."); });
+refreshAvailability();
 checkExistingEntry();
 updateButton();
-setInterval(function() { refreshQueues(); updateButton(); }, 10000);
+setInterval(refreshAvailability, 10000);
 
 joinButton.onclick = function() {
   if (!selectedBarber || joining) return;

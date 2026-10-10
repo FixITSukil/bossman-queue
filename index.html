@@ -297,22 +297,27 @@ function showForm(barber) {
 }
 
 var AVG = 35; // fallback average wait estimate per customer (minutes)
+var loadingBarbers = false;
 
 function loadBarbers() {
+  if (loadingBarbers) return;
+  loadingBarbers = true;
   call({ action: "getBarbers" }).then(function(data) {
-    barbers = data || [];
-    var done = 0;
-    if (barbers.length === 0) { renderBarbers(); return; }
-    barbers.forEach(function(b) {
-      call({ action: "getQueue", barberId: b.id }).then(function(q) {
+    if (!Array.isArray(data)) throw new Error("Could not load workers.");
+    barbers = data;
+    if (selectedBarber && !document.getElementById("step-form").classList.contains("hidden")
+        && !barbers.some(function(b) { return b.id === selectedBarber.id; })) {
+      selectedBarber = null;
+      showPick();
+    }
+    return Promise.all(barbers.map(function(b) {
+      return call({ action: "getQueue", barberId: b.id }).then(function(q) {
         queueCounts[b.id] = (q || []).length;
-        done++;
-        if (done === barbers.length) renderBarbers();
-      }).catch(function() { done++; if (done === barbers.length) renderBarbers(); });
-    });
+      }).catch(function() {});
+    })).then(renderBarbers);
   }).catch(function() {
     document.getElementById("barber-list").innerHTML = "<p style='color:#e88;text-align:center'>Failed to load. Please refresh.</p>";
-  });
+  }).finally(function() { loadingBarbers = false; });
 }
 
 // A worker is a facial therapist by role, or by known id/name (fallback if the
@@ -344,7 +349,7 @@ function renderBarbers() {
   facialTherapist = therapists[0] || null;
 
   if (barbers.length === 0) {
-    list.innerHTML = "<div class='closed'><div class='ico'>🚫</div><div class='ttl'>We're closed right now</div><div class='txt'>All workers are currently unavailable.<br>Please come back later.</div></div>";
+    list.innerHTML = "<div class='closed'><div class='ico'>🚫</div><div class='ttl'>No workers are accepting new customers right now</div><div class='txt'>Please check back shortly.</div></div>";
     return;
   }
 
@@ -611,6 +616,9 @@ function leaveQueue() {
 }
 
 resumeEntry();
+setInterval(function() {
+  if (document.getElementById("step-done").classList.contains("hidden")) loadBarbers();
+}, 10000);
 </script>
 </body>
 </html>

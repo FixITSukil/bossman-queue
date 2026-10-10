@@ -12,9 +12,14 @@
   .header-row { display: flex; align-items: center; justify-content: space-between; }
   h1 { font-family: var(--serif); font-size: 1.4rem; font-weight: 700; color: var(--cream); }
   .sub { color: var(--cream-dim); font-size: 0.78rem; margin-top: 0.15rem; letter-spacing: 0.06em; text-transform: uppercase; }
-  .toggle { padding: 0.4rem 0.95rem; border-radius: 999px; border: 1px solid var(--line); font-size: 0.8rem; font-weight: 600; cursor: pointer; font-family: var(--sans); }
-  .toggle.active { background: rgba(126,126,56,0.25); color: var(--gold-bright); border-color: var(--olive); }
-  .toggle.inactive { background: var(--pine); color: var(--cream-dim); }
+  .availability { margin-top: 1rem; padding: 1rem; border: 1px solid var(--line); border-radius: 0.75rem; background: var(--pine); }
+  .availability-title { color: var(--cream); font-weight: 700; font-size: 0.98rem; }
+  .availability-note { color: var(--cream-dim); font-size: 0.8rem; line-height: 1.45; margin-top: 0.35rem; }
+  .availability-error { color: #f3b0aa; font-size: 0.8rem; margin-top: 0.65rem; }
+  .toggle { display: block; width: 100%; margin-top: 0.9rem; padding: 0.75rem; border-radius: 0.6rem; border: 1px solid var(--gold); font-size: 0.9rem; font-weight: 700; cursor: pointer; font-family: var(--sans); }
+  .toggle.active { background: var(--pine); color: var(--gold-bright); }
+  .toggle.inactive { background: var(--gold); color: var(--pine); }
+  .toggle:disabled { opacity: 0.6; cursor: wait; }
   .stats { display: flex; gap: 0.75rem; margin-top: 1rem; }
   .stat { flex: 1; background: var(--pine); border: 1px solid var(--line); border-radius: 0.75rem; padding: 0.8rem; text-align: center; }
   .stat-val { font-family: var(--serif); font-size: 1.7rem; font-weight: 800; color: var(--gold); }
@@ -83,7 +88,12 @@
         <h1 id="barber-name">Loading…</h1>
         <p class="sub" id="clock">🕐 --:--:-- MYT</p>
       </div>
-      <button class="toggle active" id="toggle-btn" onclick="toggleActive()">Active</button>
+    </div>
+    <div class="availability" aria-live="polite">
+      <div class="availability-title" id="availability-title">Checking availability…</div>
+      <p class="availability-note" id="availability-note">Your current queue stays with you when you stop accepting new customers.</p>
+      <button type="button" class="toggle active" id="toggle-btn" onclick="toggleActive()" disabled>Loading…</button>
+      <p class="availability-error hidden" id="availability-error" role="alert"></p>
     </div>
     <div class="stats">
       <div class="stat">
@@ -166,6 +176,7 @@
 <script>
 var PIN    = new URLSearchParams(window.location.search).get("pin") || "";
 var barber = null;
+var changingAvailability = false;
 var servingId = null;
 var servingCustomer = null;
 var nextDuration = 35;
@@ -204,6 +215,7 @@ function init() {
     loadBookings();
     setInterval(loadQueue, 10000);
     setInterval(loadBookings, 30000);
+    setInterval(refreshAvailability, 30000);
   }).catch(function() {
     document.querySelector(".page").innerHTML = "<div class='card'><p style='color:#e88'>Failed to load. Please refresh.</p></div>";
   });
@@ -394,15 +406,41 @@ document.addEventListener("keydown", function(event) {
   if (event.key === "Escape" && !document.getElementById("cancel-modal").classList.contains("hidden")) closeCancelModal();
 });
 function toggleActive() {
-  if (!barber) return;
+  if (!barber || changingAvailability) return;
+  changingAvailability = true;
+  var btn = document.getElementById("toggle-btn");
+  var error = document.getElementById("availability-error");
+  error.classList.add("hidden");
+  btn.disabled = true; btn.textContent = "Saving…";
   call({ action: "toggleActive", pin: PIN }).then(function(res) {
-    if (res && typeof res.isActive !== "undefined") { barber.isActive = res.isActive; updateToggleBtn(); }
+    if (!res || res.error || typeof res.isActive !== "boolean") throw new Error("Availability could not be changed.");
+    barber.isActive = res.isActive;
+  }).catch(function() {
+    error.textContent = "Could not change your availability. Please try again.";
+    error.classList.remove("hidden");
+  }).finally(function() {
+    changingAvailability = false;
+    updateToggleBtn();
+  });
+}
+function refreshAvailability() {
+  if (!barber || changingAvailability) return;
+  call({ action: "getBarberByPin", pin: PIN }).then(function(latest) {
+    if (latest && typeof latest.isActive === "boolean" && !changingAvailability) {
+      barber.isActive = latest.isActive;
+      updateToggleBtn();
+    }
   }).catch(function() {});
 }
 function updateToggleBtn() {
   var btn = document.getElementById("toggle-btn");
-  btn.textContent = barber.isActive ? "Active" : "Inactive";
+  document.getElementById("availability-title").textContent = barber.isActive ? "Accepting new customers" : "Not accepting new customers";
+  document.getElementById("availability-note").textContent = barber.isActive
+    ? "Customers can choose you on the QR and booking pages. You can stop new joins while you finish your current queue."
+    : "New customers cannot choose you. Everyone already in your queue stays there. Turn this on when you are ready.";
+  btn.textContent = barber.isActive ? "Stop taking new customers" : "Start taking new customers";
   btn.className = "toggle " + (barber.isActive ? "active" : "inactive");
+  btn.disabled = changingAvailability;
 }
 
 init();
