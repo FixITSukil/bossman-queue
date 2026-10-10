@@ -43,6 +43,8 @@
   .modal-btns button { flex: 1; padding: 0.75rem; border-radius: 0.6rem; border: none; font-size: 0.92rem; font-weight: 600; cursor: pointer; font-family: var(--sans); }
   .btn-cancel { background: var(--pine); color: var(--cream-dim); border: 1px solid var(--line) !important; }
   .btn-confirm { background: var(--gold); color: var(--pine); }
+  .btn-danger { background: #a83d35; color: #fff; }
+  .cancel-error { color: #f3b0aa !important; margin-top: 0.8rem; }
   .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.6rem; }
   .section-title { font-family: var(--serif); font-weight: 700; color: var(--cream); font-size: 1.05rem; }
   .call-btn { display: flex; align-items: center; gap: 0.4rem; background: var(--gold); color: var(--pine); border: none; border-radius: 0.6rem; padding: 0.5rem 1rem; font-size: 0.85rem; font-weight: 600; cursor: pointer; font-family: var(--sans); }
@@ -128,6 +130,18 @@
     </div>
   </div>
 
+  <div class="modal-overlay hidden" id="cancel-modal" role="dialog" aria-modal="true" aria-labelledby="cancel-modal-title">
+    <div class="modal">
+      <h3 id="cancel-modal-title">Cancel this customer?</h3>
+      <p><strong id="cancel-customer-name"></strong> will lose their queue place. Their page will show Bossman's contact details. This cannot be undone.</p>
+      <div class="modal-btns">
+        <button type="button" class="btn-cancel" id="cancel-no" onclick="closeCancelModal()">No, keep customer</button>
+        <button type="button" class="btn-danger" id="cancel-yes" onclick="confirmCancelCustomer()">Yes, cancel</button>
+      </div>
+      <p class="cancel-error hidden" id="cancel-error" role="alert"></p>
+    </div>
+  </div>
+
   <div>
     <div class="section-header">
       <span class="section-title">Queue</span>
@@ -155,6 +169,7 @@ var barber = null;
 var servingId = null;
 var servingCustomer = null;
 var nextDuration = 35;
+var pendingCancel = null;
 var bookingDate = document.getElementById("booking-date");
 bookingDate.value = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kuala_Lumpur", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 bookingDate.onchange = loadBookings;
@@ -279,7 +294,7 @@ function renderQueue(queue) {
     detail.appendChild(name); detail.appendChild(phone); left.appendChild(number); left.appendChild(detail);
     var cancel = document.createElement("button"); cancel.type = "button"; cancel.className = "queue-cancel"; cancel.textContent = "Cancel";
     cancel.setAttribute("aria-label", "Cancel " + entry.customerName + " from the queue");
-    cancel.onclick = function() { cancelQueueCustomer(entry.id, entry.customerName, cancel); };
+    cancel.onclick = function() { cancelQueueCustomer(entry.id, entry.customerName); };
     item.appendChild(left); item.appendChild(cancel);
     list.appendChild(item);
   });
@@ -337,24 +352,47 @@ function markNoShow() {
 }
 function cancelServingCustomer() {
   if (!servingCustomer) return;
-  cancelQueueCustomer(servingCustomer.id, servingCustomer.customerName, document.getElementById("cancel-serving-btn"));
+  cancelQueueCustomer(servingCustomer.id, servingCustomer.customerName);
 }
-function cancelQueueCustomer(id, name, button) {
+function cancelQueueCustomer(id, name) {
   if (!id || !barber) return;
-  if (!confirm("Cancel " + (name || "this customer") + " from your queue? Their queue page will show Bossman's WhatsApp and phone number.")) return;
-  button.disabled = true;
+  pendingCancel = { id: id, name: name || "this customer" };
+  document.getElementById("cancel-customer-name").textContent = pendingCancel.name;
+  document.getElementById("cancel-error").classList.add("hidden");
+  document.getElementById("cancel-modal").classList.remove("hidden");
+  document.getElementById("cancel-no").focus();
+}
+function closeCancelModal() {
+  if (document.getElementById("cancel-yes").disabled) return;
+  pendingCancel = null;
+  document.getElementById("cancel-modal").classList.add("hidden");
+}
+function confirmCancelCustomer() {
+  if (!pendingCancel) return;
+  var id = pendingCancel.id;
+  var yes = document.getElementById("cancel-yes");
+  yes.disabled = true; yes.textContent = "Cancelling…";
   DB.cancelQueueEntry(PIN, id).then(function(result) {
     if (!result || result.error) {
-      alert(result && result.error || "Could not cancel this customer. Please try again.");
-      button.disabled = false;
+      var error = document.getElementById("cancel-error");
+      error.textContent = result && result.error || "Could not cancel this customer. Please try again.";
+      error.classList.remove("hidden");
       return;
     }
+    pendingCancel = null;
+    document.getElementById("cancel-modal").classList.add("hidden");
     loadQueue();
   }).catch(function() {
-    alert("Could not cancel this customer. Please try again.");
-    button.disabled = false;
+    var error = document.getElementById("cancel-error");
+    error.textContent = "Could not cancel this customer. Please try again.";
+    error.classList.remove("hidden");
+  }).finally(function() {
+    yes.disabled = false; yes.textContent = "Yes, cancel";
   });
 }
+document.addEventListener("keydown", function(event) {
+  if (event.key === "Escape" && !document.getElementById("cancel-modal").classList.contains("hidden")) closeCancelModal();
+});
 function toggleActive() {
   if (!barber) return;
   call({ action: "toggleActive", pin: PIN }).then(function(res) {

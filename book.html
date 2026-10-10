@@ -3,8 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0a1f14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Bossman Queue">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Join the Queue — Bossman</title>
 <link rel="stylesheet" href="brand.css">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
   body { padding: 1.25rem; }
   main { max-width: 480px; margin: 0 auto; padding: 1rem 0 3rem; }
@@ -28,6 +34,11 @@
   .primary:disabled { opacity: 0.5; cursor: not-allowed; }
   .link { color: var(--gold-bright); }
   .queue-note { margin-top: 0.75rem; }
+  .secondary { background: transparent; color: var(--cream-dim); border: 1px solid var(--line); border-radius: 0.55rem; padding: 0.75rem; width: 100%; margin-top: 0.8rem; cursor: pointer; font: inherit; }
+  .install-card { margin-top: 1rem; padding: 0.8rem 1rem; background: var(--moss); border: 1px solid var(--line); border-radius: 0.75rem; }
+  .install-card summary { color: var(--gold-bright); cursor: pointer; font-size: 0.85rem; }
+  .install-card p { color: var(--cream-dim); font-size: 0.8rem; line-height: 1.5; margin-top: 0.6rem; }
+  .install-card button { width: 100%; margin-bottom: 0.6rem; padding: 0.65rem; font: inherit; }
   @media (max-width: 370px) { .choices { grid-template-columns: 1fr; } }
 </style>
 </head>
@@ -39,13 +50,25 @@
     <p class="lead">Choose your barber and see the live queue before you join, wherever you are. Online joining is open from 11:00 AM to 10:45 PM Malaysia time.</p>
   </div>
 
-  <section class="panel hidden" id="existing-entry">
-    <h2>You're already in the queue</h2>
-    <p class="muted">Keep track of your place and estimated wait on your queue page.</p>
-    <a class="link" href="index.html">View my place in the queue →</a>
+  <section class="install-card" id="install-card">
+    <button class="btn-gold hidden" id="install-button" type="button">Install Bossman app</button>
+    <details>
+      <summary>Add Bossman to your Home Screen</summary>
+      <p><strong>iPhone:</strong> Open this link in Safari, tap Share, then Add to Home Screen and Add.</p>
+      <p><strong>Android:</strong> Open this link in Chrome, then use Install app or Add to Home screen from the browser menu.</p>
+    </details>
   </section>
 
-  <div id="join-form">
+  <section class="panel hidden" id="existing-entry">
+    <h2>You're already in the queue</h2>
+    <p class="muted" id="existing-message">Keep track of your place and estimated wait on your queue page. You can only hold one queue place at a time.</p>
+    <a class="link" href="index.html">View my place in the queue →</a>
+    <button class="secondary" id="cancel-existing" type="button">Cancel my booking</button>
+    <p class="error hidden" id="existing-error" role="alert"></p>
+  </section>
+
+  <div id="join-form" class="hidden">
+    <p class="panel muted hidden" id="cancelled-note" role="status">Your booking was cancelled and your queue place has been released. You can join again if you need to.</p>
     <section class="panel">
       <h2>Choose your barber</h2>
       <div class="choices" id="barbers" aria-live="polite"><p class="muted">Loading live queues…</p></div>
@@ -62,7 +85,8 @@
     </section>
   </div>
 </main>
-<script src="api.js?v=20261010b"></script>
+<script src="api.js?v=20261010d"></script>
+<script src="pwa.js?v=20261010d"></script>
 <script>
 var selectedBarber = null;
 var barbers = [];
@@ -70,6 +94,7 @@ var queueSnapshot = {};
 var joinButton = document.getElementById("join-button");
 var joining = false;
 var storeKey = "bossman_queue";
+var existingEntry = null;
 
 function malaysiaMinutes() {
   var parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kuala_Lumpur", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date());
@@ -82,7 +107,7 @@ function joiningOpen() {
   return minute >= 660 && minute <= 1365;
 }
 function updateButton() {
-  joinButton.disabled = joining || !selectedBarber || !joiningOpen();
+  joinButton.disabled = joining || !selectedBarber || !joiningOpen() || document.getElementById("join-form").classList.contains("hidden");
   document.getElementById("hours-note").textContent = joiningOpen() ? "Last online join: 10:45 PM MYT." : "Online joining opens at 11:00 AM and closes at 10:45 PM MYT.";
 }
 function queueSummary(barber) {
@@ -126,14 +151,43 @@ function showError(message) {
 function checkExistingEntry() {
   var saved;
   try { saved = JSON.parse(localStorage.getItem(storeKey) || "null"); } catch (e) { localStorage.removeItem(storeKey); }
-  if (!saved || !saved.entryId) return;
+  if (!saved || !saved.entryId) { document.getElementById("join-form").classList.remove("hidden"); updateButton(); return; }
   DB.getEntry(saved.entryId).then(function(entry) {
     if (entry && (entry.status === "waiting" || entry.status === "called")) {
+      existingEntry = saved;
       document.getElementById("existing-entry").classList.remove("hidden");
       document.getElementById("join-form").classList.add("hidden");
-    } else { localStorage.removeItem(storeKey); }
-  }).catch(function() {});
+    } else {
+      localStorage.removeItem(storeKey);
+      document.getElementById("join-form").classList.remove("hidden");
+    }
+    updateButton();
+  }).catch(function() {
+    document.getElementById("existing-entry").classList.remove("hidden");
+    document.getElementById("existing-message").textContent = "Could not check your current queue place. Please refresh this page.";
+    document.getElementById("cancel-existing").classList.add("hidden");
+  });
 }
+
+document.getElementById("cancel-existing").onclick = function() {
+  if (existingEntry && existingEntry.facialEntryId) { location.href = "index.html"; return; }
+  if (!existingEntry || !confirm("Cancel your queue booking? You will lose your place.")) return;
+  var button = this; button.disabled = true; button.textContent = "Cancelling…";
+  DB.leaveQueue(existingEntry.entryId).then(function(result) {
+    if (!result || result.error) throw new Error(result && result.error || "Could not cancel.");
+    localStorage.removeItem(storeKey);
+    existingEntry = null;
+    document.getElementById("existing-entry").classList.add("hidden");
+    document.getElementById("join-form").classList.remove("hidden");
+    document.getElementById("cancelled-note").classList.remove("hidden");
+    refreshQueues();
+    updateButton();
+  }).catch(function() {
+    var error = document.getElementById("existing-error");
+    error.textContent = "Could not cancel. Please try again or contact Bossman.";
+    error.classList.remove("hidden");
+  }).finally(function() { button.disabled = false; button.textContent = "Cancel my booking"; });
+};
 
 DB.getBarbers().then(function(items) {
   barbers = items.filter(function(barber) { return barber.role === "barber"; });
