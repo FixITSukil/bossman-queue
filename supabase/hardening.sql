@@ -142,12 +142,24 @@ begin
   return json_build_object('ok', true, 'isActive', v_new);
 end; $$;
 
-create or replace function leave_queue(p_entry_id uuid)
+alter table public.queue_entries
+  add column if not exists cancel_token uuid not null default gen_random_uuid();
+drop function if exists public.leave_queue(uuid);
+create or replace function leave_queue(p_entry_id uuid, p_cancel_token uuid)
 returns json language plpgsql security definer set search_path = public as $$
+declare v_id uuid;
 begin
-  update queue_entries set status = 'no_show'
-    where id = p_entry_id and status in ('waiting','called');
-  return json_build_object('ok', true);
+  if p_entry_id is null or p_cancel_token is null then
+    return json_build_object('error','This booking needs its private cancellation key. Please ask staff for help.');
+  end if;
+  update queue_entries set status = 'cancelled_by_customer'
+    where id = p_entry_id and cancel_token = p_cancel_token
+      and status in ('waiting','called')
+    returning id into v_id;
+  if v_id is null then
+    return json_build_object('error','Could not cancel this booking. Please ask staff for help.');
+  end if;
+  return json_build_object('ok',true);
 end; $$;
 
 create or replace function get_owner_view(p_owner_pin text)
@@ -178,5 +190,6 @@ grant execute on function get_queue_for_barber(text)  to anon, authenticated;
 grant execute on function call_next(text,int)         to anon, authenticated;
 grant execute on function set_status(text,uuid,text)  to anon, authenticated;
 grant execute on function toggle_active(text)         to anon, authenticated;
-grant execute on function leave_queue(uuid)           to anon, authenticated;
+revoke all on function leave_queue(uuid,uuid) from public, anon, authenticated;
+grant execute on function leave_queue(uuid,uuid)      to anon, authenticated;
 grant execute on function get_owner_view(text)        to anon, authenticated;

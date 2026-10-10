@@ -68,7 +68,7 @@
   </section>
 
   <div id="join-form" class="hidden">
-    <p class="panel muted hidden" id="cancelled-note" role="status">Your booking was cancelled and your queue place has been released. You can join again if you need to.</p>
+    <p class="panel muted hidden" id="cancelled-note" role="status">Your queue place has been released. If you need to join again, please wait 30 minutes from your last join or ask staff for help.</p>
     <section class="panel">
       <h2>Choose your barber</h2>
       <div class="choices" id="barbers" aria-live="polite"><p class="muted">Loading live queues…</p></div>
@@ -85,7 +85,7 @@
     </section>
   </div>
 </main>
-<script src="api.js?v=20261010d"></script>
+<script src="api.js?v=20261010g"></script>
 <script src="pwa.js?v=20261010d"></script>
 <script>
 var selectedBarber = null;
@@ -173,6 +173,10 @@ function checkExistingEntry() {
       existingEntry = saved;
       document.getElementById("existing-entry").classList.remove("hidden");
       document.getElementById("join-form").classList.add("hidden");
+      if (!saved.cancelToken) {
+        document.getElementById("existing-message").textContent = "This booking was made before secure cancellation. Please ask staff if you need to cancel it.";
+        document.getElementById("cancel-existing").classList.add("hidden");
+      }
     } else {
       localStorage.removeItem(storeKey);
       if (entry && entry.status === "done") localStorage.removeItem("bossman_last_join");
@@ -190,7 +194,7 @@ document.getElementById("cancel-existing").onclick = function() {
   if (existingEntry && existingEntry.facialEntryId) { location.href = "index.html"; return; }
   if (!existingEntry || !confirm("Cancel your queue booking? You will lose your place.")) return;
   var button = this; button.disabled = true; button.textContent = "Cancelling…";
-  DB.leaveQueue(existingEntry.entryId).then(function(result) {
+  DB.leaveQueue(existingEntry.entryId, existingEntry.cancelToken).then(function(result) {
     if (!result || result.error) throw new Error(result && result.error || "Could not cancel.");
     localStorage.removeItem(storeKey);
     existingEntry = null;
@@ -221,7 +225,7 @@ joinButton.onclick = function() {
   joining = true; joinButton.textContent = "Joining…"; updateButton();
   DB.joinQueueRemote({ barberId: selectedBarber.id, customerName: name, phone: phone }).then(function(result) {
     if (!result || result.error) { showError(result && result.error || "Could not join. Please try again."); return; }
-    localStorage.setItem(storeKey, JSON.stringify({ entryId: result.id, id: selectedBarber.id, name: selectedBarber.name, avgMinutes: selectedBarber.avgMinutes || 35 }));
+    localStorage.setItem(storeKey, JSON.stringify({ entryId: result.id, cancelToken: result.cancelToken, id: selectedBarber.id, name: selectedBarber.name, avgMinutes: selectedBarber.avgMinutes || 35 }));
     location.href = "index.html";
   }).catch(function() { showError("Could not join. Please try again."); }).finally(function() {
     joining = false; joinButton.textContent = "Join queue"; updateButton(); refreshQueues();

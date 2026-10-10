@@ -57,7 +57,7 @@ var DB = {
       p_customer_name: p.customerName, p_phone: p.phone, p_token: ""
     });
   },
-  leaveQueue: function(id) { return sbRpc("leave_queue", { p_entry_id: id }); },
+  leaveQueue: function(id, token) { return sbRpc("leave_queue", { p_entry_id: id, p_cancel_token: token }); },
   // Barber dashboard (secret-link gated, returns full detail incl. phone)
   getBarberByPin: function(pin) { return sbRpc("get_barber_by_pin", { p_pin: pin }); },
   getBarberQueue: function(pin) { return sbRpc("get_queue_for_barber", { p_pin: pin }); },
@@ -127,7 +127,7 @@ function call(params) {
     case "getQueue":       return DB.getQueue(params.barberId);
     case "getEntry":       return DB.getEntry(params.id);
     case "joinQueue":      return DB.joinQueue(params);
-    case "leaveQueue":     return DB.leaveQueue(params.id);
+    case "leaveQueue":     return DB.leaveQueue(params.id, params.token);
     case "getBarberByPin": return DB.getBarberByPin(params.pin);
     case "getBarberQueue": return DB.getBarberQueue(params.pin);
     case "callNext":       return DB.callNext(params.pin, params.durationMinutes);
