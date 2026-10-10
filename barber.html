@@ -69,6 +69,7 @@
   .empty { text-align: center; color: var(--cream-dim); padding: 2.5rem 1rem; font-size: 0.92rem; letter-spacing: 0.03em; }
   .queue-stack { display: flex; flex-direction: column; gap: 0.5rem; }
   .refresh-note { text-align: center; font-size: 0.68rem; color: var(--cream-dim); opacity: 0.6; padding-top: 0.5rem; letter-spacing: 0.05em; }
+  .queue-action-error { color: #f3b0aa; font-size: 0.82rem; line-height: 1.4; margin-bottom: 0.65rem; }
   .booking-date { color: var(--cream); background: var(--pine); border: 1px solid var(--fern); border-radius: 0.5rem; padding: 0.4rem; font: inherit; width: 100%; margin: 0.4rem 0 0.8rem; }
   .booking-item { padding: 0.85rem; background: var(--moss); border: 1px solid var(--line); border-radius: 0.7rem; margin-bottom: 0.5rem; }
   .booking-time { color: var(--gold); font-weight: 700; font-size: 0.84rem; }
@@ -157,6 +158,7 @@
       <span class="section-title">Queue</span>
       <button class="call-btn hidden" id="call-btn" onclick="openCallModal()">🔔 Call Next</button>
     </div>
+    <p class="queue-action-error hidden" id="queue-action-error" role="alert"></p>
     <div class="queue-stack" id="queue-list">
       <div class="empty">Loading queue…</div>
     </div>
@@ -172,7 +174,7 @@
 
 </div>
 
-<script src="api.js?v=20261010c"></script>
+<script src="api.js?v=20261010f"></script>
 <script>
 var PIN    = new URLSearchParams(window.location.search).get("pin") || "";
 var barber = null;
@@ -181,6 +183,10 @@ var servingId = null;
 var servingCustomer = null;
 var nextDuration = 35;
 var pendingCancel = null;
+var pendingCall = null;
+var pendingComplete = null;
+var latestQueue = [];
+var queueRequestId = 0;
 var bookingDate = document.getElementById("booking-date");
 bookingDate.value = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kuala_Lumpur", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 bookingDate.onchange = loadBookings;
@@ -222,8 +228,39 @@ function init() {
 }
 
 function loadQueue() {
-  if (!barber) return;
-  call({ action: "getBarberQueue", pin: PIN }).then(renderQueue).catch(function() {});
+  if (!barber) return Promise.resolve();
+  var requestId = ++queueRequestId;
+  return call({ action: "getBarberQueue", pin: PIN }).then(function(queue) {
+    if (!Array.isArray(queue)) throw new Error("Could not read the queue.");
+    if (requestId === queueRequestId) renderQueue(queue);
+  }).catch(function() {});
+}
+
+function withActionTimeout(promise) {
+  var timer;
+  return Promise.race([
+    promise,
+    new Promise(function(_, reject) {
+      timer = setTimeout(function() { reject(new Error("timeout")); }, 12000);
+    })
+  ]).finally(function() { clearTimeout(timer); });
+}
+
+function showQueueActionError(message) {
+  var error = document.getElementById("queue-action-error");
+  error.textContent = message;
+  error.classList.remove("hidden");
+}
+function clearQueueActionError() {
+  document.getElementById("queue-action-error").classList.add("hidden");
+}
+function syncQueueButtons() {
+  var callBtn = document.getElementById("call-btn");
+  callBtn.disabled = !!pendingCall;
+  callBtn.textContent = pendingCall ? "Calling…" : "🔔 Call Next";
+  var completeBtn = document.getElementById("complete-cut-btn");
+  completeBtn.disabled = !!pendingComplete;
+  completeBtn.textContent = pendingComplete ? "Completing…" : "✅ Complete Cut";
 }
 
 function loadBookings() {
@@ -260,9 +297,13 @@ function loadBookings() {
 
 function renderQueue(queue) {
   queue = queue || [];
+  latestQueue = queue;
   var waiting = queue.filter(function(q) { return q.status === "waiting"; });
   nextDuration = waiting.length && waiting[0].durationMinutes > 0 ? waiting[0].durationMinutes : 35;
   var serving  = queue.find(function(q)  { return q.status === "called"; });
+  if (pendingCall && serving && serving.id === pendingCall.entryId) pendingCall = null;
+  if (pendingComplete && (!serving || serving.id !== pendingComplete.entryId)) pendingComplete = null;
+  syncQueueButtons();
 
   var avg = barber ? barber.avgMinutes || 30 : 30;
   var remaining = remainingCut(serving, avg);
@@ -313,6 +354,7 @@ function renderQueue(queue) {
 }
 
 function openCallModal() {
+  if (pendingCall || servingId) return;
   document.getElementById("duration-input").value = nextDuration;
   document.getElementById("duration-modal").classList.remove("hidden");
 }
@@ -322,12 +364,36 @@ function adjustDuration(delta) {
   inp.value = Math.max(5, Math.min(120, (parseInt(inp.value) || 30) + delta));
 }
 function confirmCallNext() {
-  if (!barber) return;
+  if (!barber || pendingCall) return;
+  var next = latestQueue.find(function(entry) { return entry.status === "waiting"; });
+  if (!next) { closeModal(); loadQueue(); return; }
   var mins = parseInt(document.getElementById("duration-input").value) || 30;
   closeModal();
-  document.getElementById("call-btn").textContent = "Calling…";
-  call({ action: "callNext", pin: PIN, durationMinutes: mins })
-    .then(loadQueue).catch(loadQueue);
+  var action = { entryId: next.id };
+  pendingCall = action;
+  queueRequestId++; // discard reads started before this action
+  clearQueueActionError();
+  syncQueueButtons();
+  withActionTimeout(call({ action: "callNext", pin: PIN, durationMinutes: mins }))
+    .then(function(res) {
+      if (!res || res.error || res.ok !== true) throw new Error(res && res.error || "Could not call the customer.");
+      if (pendingCall === action) {
+        queueRequestId++;
+        renderQueue(latestQueue.map(function(entry) {
+          return entry.id === res.entryId ? Object.assign({}, entry, { status: "called", calledAt: new Date().toISOString(), durationMinutes: mins }) : entry;
+        }));
+      }
+      loadQueue();
+    }).catch(function(error) {
+      if (pendingCall !== action) return; // polling already confirmed the call
+      showQueueActionError(error.message === "timeout"
+        ? "The call is taking longer than expected. Check the queue below before trying again."
+        : "Could not call the next customer. " + error.message);
+      loadQueue();
+    }).finally(function() {
+      if (pendingCall === action) pendingCall = null;
+      syncQueueButtons();
+    });
 }
 function markStatus(id, status) {
   if (!id || !barber) return;
@@ -336,23 +402,30 @@ function markStatus(id, status) {
 }
 
 function completeCut() {
-  if (!servingCustomer || !barber) return;
+  if (!servingCustomer || !barber || pendingComplete) return;
   var customer = servingCustomer;
-  var btn = document.getElementById("complete-cut-btn");
-  if (btn) { btn.disabled = true; btn.textContent = "Completing…"; }
-
-  call({ action: "setStatus", pin: PIN, id: customer.id, status: "done" })
+  var action = { entryId: customer.id };
+  pendingComplete = action;
+  queueRequestId++; // discard reads started before this action
+  clearQueueActionError();
+  syncQueueButtons();
+  withActionTimeout(call({ action: "setStatus", pin: PIN, id: customer.id, status: "done" }))
     .then(function(res) {
-      if (!res || res.error) {
-        if (btn) { btn.disabled = false; btn.textContent = "✅ Complete Cut"; }
-        alert("Could not complete the cut. Please try again.");
-        return;
+      if (!res || res.error || res.ok !== true) throw new Error(res && res.error || "Could not complete the cut.");
+      if (pendingComplete === action) {
+        queueRequestId++;
+        renderQueue(latestQueue.filter(function(entry) { return entry.id !== customer.id; }));
       }
       loadQueue();
-    })
-    .catch(function() {
-      if (btn) { btn.disabled = false; btn.textContent = "✅ Complete Cut"; }
-      alert("Could not complete the cut. Please try again.");
+    }).catch(function(error) {
+      if (pendingComplete !== action) return; // polling already confirmed completion
+      showQueueActionError(error.message === "timeout"
+        ? "Completion is taking longer than expected. Check the queue below before trying again."
+        : "Could not complete the cut. " + error.message);
+      loadQueue();
+    }).finally(function() {
+      if (pendingComplete === action) pendingComplete = null;
+      syncQueueButtons();
     });
 }
 
