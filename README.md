@@ -4,7 +4,7 @@ The in-shop QR still opens `index.html` and requires a rotating token and shop l
 
 ## Remote booking setup
 
-1. Apply `supabase/migrations/20261010083618_remote_bookings.sql` to the Bossman Supabase project (`ksgkzeiaxwzgufilqbso`). The SQL creates the service catalog, appointments, availability and staff RPCs. Apply it **before** publishing the updated pages.
+1. Apply `supabase/migrations/20261010083618_remote_bookings.sql` and then `supabase/migrations/20261010084559_serialize_queue_positions.sql` to the Bossman Supabase project (`ksgkzeiaxwzgufilqbso`). The SQL creates the service catalog, appointments, availability and staff RPCs and coordinates queue positions between QR walk-ins and appointment check-ins. Apply both **before** publishing the updated pages.
 2. Publish the updated site to GitHub Pages.
 3. Open the existing private owner dashboard and add services with a name and average duration, or upload a CSV with one `Name, minutes` row per service. Customers cannot book until at least one active service is added.
 4. Give customers this public link: `https://fixitsukil.github.io/bossman-queue/book.html`.
