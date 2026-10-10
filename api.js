@@ -58,6 +58,7 @@ var DB = {
   getBarberQueue: function(pin) { return sbRpc("get_queue_for_barber", { p_pin: pin }); },
   callNext: function(pin, mins) { return sbRpc("call_next", { p_pin: pin, p_duration: parseInt(mins) || 35 }); },
   setStatus: function(pin, id, status) { return sbRpc("set_status", { p_pin: pin, p_entry_id: id, p_status: status }); },
+  cancelQueueEntry: function(pin, id) { return sbRpc("cancel_queue_entry", { p_pin: pin, p_entry_id: id }); },
   toggleActive: function(pin) { return sbRpc("toggle_active", { p_pin: pin }); },
   // Owner (secret-link gated)
   getOwnerView: function(pin) { return sbRpc("get_owner_view", { p_owner_pin: pin }); },

@@ -11,3 +11,5 @@ The in-shop QR still opens `index.html` and requires a rotating token and shop l
 Apply the SQL migrations in `supabase/migrations/` in timestamp order before publishing the corresponding pages. The remote join function is in `20261010090112_remote_queue_join.sql`. Publish the site to GitHub Pages, then test the public link. No owner, barber, or kiosk secret belongs in the public URL.
 
 Estimated waits use each barber's average minutes and the remaining time of any customer currently being served. They are estimates; actual service length and queue changes can affect them.
+
+Barbers can cancel a waiting or called customer separately from marking a no-show. The customer's queue page then shows an apology and links to WhatsApp or call Bossman at 011-1165 1608. The page checks for status changes every 10 seconds while open and shows the cancellation again if the customer returns to that queue page on the same device.

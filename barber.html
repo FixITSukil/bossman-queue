@@ -25,10 +25,11 @@
   .serving-row { display: block; }
   .serving-name { font-family: var(--serif); font-size: 1.3rem; font-weight: 700; color: var(--pine); }
   .serving-phone { font-size: 0.85rem; color: rgba(14,40,24,0.7); margin-top: 0.1rem; }
-  .icon-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.85rem; }
+  .icon-btns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-top: 0.85rem; }
   .icon-btn { background: var(--pine); color: var(--cream); border: none; border-radius: 0.6rem; padding: 0.7rem 0.55rem; cursor: pointer; font-size: 0.78rem; font-weight: 700; line-height: 1.15; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; font-family: var(--sans); }
   .icon-btn.complete { color: var(--gold-bright); }
   .icon-btn.no-show { background: rgba(14,40,24,0.78); color: #f3b0aa; }
+  .icon-btn.cancel-customer { background: rgba(14,40,24,0.78); color: #f3b0aa; }
   /* Modal */
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.65); display: flex; align-items: center; justify-content: center; padding: 1.5rem; z-index: 100; }
   .modal { background: var(--moss); border: 1px solid var(--line); border-radius: 1rem; padding: 1.5rem; width: 100%; max-width: 300px; }
@@ -51,6 +52,10 @@
   .queue-num { width: 2rem; height: 2rem; border-radius: 50%; background: var(--pine); border: 1px solid var(--fern); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; color: var(--gold); flex-shrink: 0; }
   .queue-name { font-weight: 600; color: var(--cream); font-size: 0.95rem; }
   .queue-phone { font-size: 0.78rem; color: var(--cream-dim); margin-top: 0.1rem; }
+  .queue-item .queue-left { min-width: 0; }
+  .queue-item .queue-left > div:last-child { min-width: 0; overflow-wrap: anywhere; }
+  .queue-cancel { background: transparent; color: #f3b0aa; border: 1px solid var(--line); border-radius: 0.45rem; padding: 0.45rem; font: inherit; font-size: 0.7rem; cursor: pointer; flex-shrink: 0; }
+  .queue-cancel:disabled, .icon-btn:disabled { opacity: 0.55; cursor: wait; }
   .queue-actions { display: flex; gap: 0.25rem; }
   .q-btn { background: none; border: none; cursor: pointer; padding: 0.3rem; font-size: 1.1rem; opacity: 0.75; }
   .q-btn:hover { opacity: 1; }
@@ -100,6 +105,7 @@
       <div class="icon-btns">
         <button class="icon-btn complete" id="complete-cut-btn" onclick="completeCut()" title="Mark this service completed">✅ Complete Cut</button>
         <button class="icon-btn no-show" onclick="markNoShow()" title="Customer did not turn up">❌ No Show</button>
+        <button class="icon-btn cancel-customer" id="cancel-serving-btn" onclick="cancelServingCustomer()" title="Cancel this customer's queue entry">Cancel customer</button>
       </div>
     </div>
     <p style="font-size:0.72rem;color:rgba(14,40,24,0.7);margin-top:0.65rem;letter-spacing:0.02em;">Complete Cut marks the service done. The customer's own queue page will then show the Google review button.</p>
@@ -142,7 +148,7 @@
 
 </div>
 
-<script src="api.js?v=20261010"></script>
+<script src="api.js?v=20261010c"></script>
 <script>
 var PIN    = new URLSearchParams(window.location.search).get("pin") || "";
 var barber = null;
@@ -265,12 +271,16 @@ function renderQueue(queue) {
     var waitMins = (serving ? remaining : 0) + i * avg;
     var item = document.createElement("div");
     item.className = "queue-item";
-    item.innerHTML =
-      '<div class="queue-left">' +
-        '<div class="queue-num">' + (i + 1) + '</div>' +
-        '<div><div class="queue-name">' + entry.customerName + '</div>' +
-        '<div class="queue-phone">~' + waitMins + ' min wait · ' + entry.phone + '</div></div>' +
-      '</div>';
+    var left = document.createElement("div"); left.className = "queue-left";
+    var number = document.createElement("div"); number.className = "queue-num"; number.textContent = i + 1;
+    var detail = document.createElement("div");
+    var name = document.createElement("div"); name.className = "queue-name"; name.textContent = entry.customerName;
+    var phone = document.createElement("div"); phone.className = "queue-phone"; phone.textContent = "~" + waitMins + " min wait · " + entry.phone;
+    detail.appendChild(name); detail.appendChild(phone); left.appendChild(number); left.appendChild(detail);
+    var cancel = document.createElement("button"); cancel.type = "button"; cancel.className = "queue-cancel"; cancel.textContent = "Cancel";
+    cancel.setAttribute("aria-label", "Cancel " + entry.customerName + " from the queue");
+    cancel.onclick = function() { cancelQueueCustomer(entry.id, entry.customerName, cancel); };
+    item.appendChild(left); item.appendChild(cancel);
     list.appendChild(item);
   });
 }
@@ -324,6 +334,26 @@ function markNoShow() {
   var name = servingCustomer.customerName || "this customer";
   if (!confirm("Mark " + name + " as No Show?")) return;
   markStatus(servingCustomer.id, "no_show");
+}
+function cancelServingCustomer() {
+  if (!servingCustomer) return;
+  cancelQueueCustomer(servingCustomer.id, servingCustomer.customerName, document.getElementById("cancel-serving-btn"));
+}
+function cancelQueueCustomer(id, name, button) {
+  if (!id || !barber) return;
+  if (!confirm("Cancel " + (name || "this customer") + " from your queue? Their queue page will show Bossman's WhatsApp and phone number.")) return;
+  button.disabled = true;
+  DB.cancelQueueEntry(PIN, id).then(function(result) {
+    if (!result || result.error) {
+      alert(result && result.error || "Could not cancel this customer. Please try again.");
+      button.disabled = false;
+      return;
+    }
+    loadQueue();
+  }).catch(function() {
+    alert("Could not cancel this customer. Please try again.");
+    button.disabled = false;
+  });
 }
 function toggleActive() {
   if (!barber) return;
