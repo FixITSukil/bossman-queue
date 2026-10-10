@@ -96,6 +96,11 @@
     <img src="logo.png" alt="Bossman Gentleman's Club Barbershop" class="logo" onerror="this.style.display='none'">
     <div class="sub">Choose your barber to join the queue</div>
   </div>
+  <div class="closed hidden" id="hours-closed" role="status">
+    <div class="ico">🕒</div>
+    <div class="ttl" id="hours-title">The queue is closed</div>
+    <div class="txt" id="hours-text">QR joining is open from 11:00 AM to 10:45 PM Malaysia time.</div>
+  </div>
   <div class="stack" id="barber-list">
     <p id="loading">Loading barbers…</p>
   </div>
@@ -199,9 +204,36 @@ function tickClock() {
   var conf = document.getElementById("conf-clock");
   if (top)  top.textContent  = label;
   if (conf) conf.textContent = label;
+  updateHoursUI();
 }
 setInterval(tickClock, 1000);
 tickClock();
+
+function malaysiaMinutes() {
+  var parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kuala_Lumpur", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date());
+  var hour = Number(parts.find(function(part) { return part.type === "hour"; }).value);
+  var minute = Number(parts.find(function(part) { return part.type === "minute"; }).value);
+  return hour * 60 + minute;
+}
+
+function joiningOpen() {
+  var minute = malaysiaMinutes();
+  return minute >= 11 * 60 && minute <= 22 * 60 + 45;
+}
+
+function updateHoursUI() {
+  var minute = malaysiaMinutes();
+  var open = minute >= 11 * 60 && minute <= 22 * 60 + 45;
+  document.getElementById("hours-closed").classList.toggle("hidden", open);
+  document.getElementById("barber-list").classList.toggle("hidden", !open);
+  if (!open) {
+    document.getElementById("hours-title").textContent = minute < 11 * 60 ? "The queue isn't open yet" : "The queue is closed for today";
+    document.getElementById("hours-text").textContent = minute < 11 * 60
+      ? "Please scan again from 11:00 AM. The last join is at 10:45 PM Malaysia time."
+      : "Please come back tomorrow from 11:00 AM. The last join is at 10:45 PM Malaysia time.";
+    if (!document.getElementById("step-form").classList.contains("hidden")) showPick();
+  }
+}
 
 var STORE_KEY = "bossman_queue";
 function saveEntry(barber) {
@@ -244,6 +276,7 @@ function showPick() {
 }
 
 function showForm(barber) {
+  if (!joiningOpen()) { updateHoursUI(); return; }
   selectedBarber = barber;
   var count = queueCounts[barber.id] || 0;
   var therapist = isTherapist(barber);
@@ -363,6 +396,7 @@ function checkGeofence(cb) {
 }
 
 function joinQueue() {
+  if (!joiningOpen()) { showPick(); updateHoursUI(); return; }
   var name  = document.getElementById("inp-name").value.trim();
   var phone = document.getElementById("inp-phone").value.trim();
   var errEl = document.getElementById("form-error");
@@ -392,6 +426,7 @@ function expiredMsg(errEl) {
 }
 
 function doJoin(name, phone, errEl) {
+  if (!joiningOpen()) { showPick(); updateHoursUI(); return; }
   var btn = document.getElementById("btn-join");
   btn.disabled = true; btn.textContent = "Joining…";
   call({ action: "joinQueue", barberId: selectedBarber.id, barberName: selectedBarber.name, customerName: name, phone: phone, t: QR_TOKEN })

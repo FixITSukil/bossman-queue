@@ -4,7 +4,7 @@ Give customers this public link: **https://fixitsukil.github.io/bossman-queue/bo
 
 The page shows each active barber's live queue and estimated wait. Customers choose a barber, enter their name and phone, and join the live queue from anywhere. They do not choose a service or appointment time. Online joining is open from 11:00 AM through 10:45 PM Malaysia time; the database enforces these hours. After joining, customers see their place and wait on `index.html`, which refreshes automatically.
 
-The in-shop QR still opens `index.html` and requires a rotating token and shop location. Both paths enter the same live queue. Staff see remote customers in their existing barber and owner dashboards. The service catalog remains available to the owner for staff reference, and previous appointments remain visible to staff.
+The in-shop QR still opens `index.html` and requires a rotating token and shop location. QR joining also runs from 11:00 AM through 10:45 PM Malaysia time. Outside that window, the QR page shows a closed message instead of barber choices, and the database rejects any attempted join. Customers already in the queue can still view their place. Both paths enter the same live queue. Staff see remote customers in their existing barber and owner dashboards. The service catalog remains available to the owner for staff reference, and previous appointments remain visible to staff.
 
 ## Deployment
 
