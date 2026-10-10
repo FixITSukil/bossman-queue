@@ -55,6 +55,19 @@
   .eod-workers b { font-family: var(--serif); }
   .empty-queue { padding: 1rem; text-align: center; color: var(--cream-dim); opacity: 0.6; font-size: 0.85rem; }
   .refresh-note { text-align: center; font-size: 0.68rem; color: var(--cream-dim); opacity: 0.5; padding: 1rem 0 0.5rem; letter-spacing: 0.05em; }
+  .service-panel { background: var(--moss); border: 1px solid var(--line); border-radius: 1rem; padding: 1rem; margin: 1rem 0; }
+  .service-panel h2 { font-family: var(--serif); font-size: 1.05rem; }
+  .service-panel p { color: var(--cream-dim); font-size: 0.78rem; line-height: 1.4; margin-top: 0.35rem; }
+  .service-row { border-top: 1px solid var(--line); padding: 0.7rem 0; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+  .service-row small { color: var(--cream-dim); display: block; margin-top: 0.2rem; }
+  .service-row button, .service-form button { background: var(--gold); color: var(--pine); border: 0; border-radius: 0.5rem; padding: 0.5rem 0.7rem; font: inherit; cursor: pointer; }
+  .service-form { display: flex; gap: 0.4rem; margin-top: 0.8rem; }
+  .service-form input { min-width: 0; color: var(--cream); background: var(--pine); border: 1px solid var(--fern); border-radius: 0.5rem; padding: 0.5rem; font: inherit; }
+  .service-form input[type=number] { width: 5rem; }
+  .service-bulk { width: 100%; min-height: 5rem; margin-top: 0.5rem; padding: 0.6rem; color: var(--cream); background: var(--pine); border: 1px solid var(--fern); border-radius: 0.5rem; font: inherit; }
+  .service-error { color: #f2aaa5 !important; }
+  .owner-booking { border-top: 1px solid var(--line); padding: 0.65rem 0; font-size: 0.82rem; }
+  .owner-booking small { display: block; color: var(--cream-dim); margin-top: 0.2rem; }
 </style>
 </head>
 <body>
@@ -74,6 +87,29 @@
     <div class="sum-card"><div class="sum-val" id="sum-serving">–</div><div class="sum-label">being served</div></div>
     <div class="sum-card"><div class="sum-val" id="sum-active">–</div><div class="sum-label">barbers active</div></div>
   </div>
+
+  <section class="service-panel">
+    <h2>Services & average times</h2>
+    <p>Customers see active services and the minutes you set here. Existing bookings keep the service time they were booked with.</p>
+    <div id="service-list"><p>Loading services…</p></div>
+    <div class="service-form">
+      <input id="service-name" type="text" maxlength="80" placeholder="Service name" aria-label="Service name">
+      <input id="service-minutes" type="number" min="5" max="240" placeholder="Min" aria-label="Average minutes">
+      <button type="button" id="add-service">Add</button>
+    </div>
+    <p style="margin-top:1rem;">Upload several services: one per line as <strong>Name, minutes</strong>, or choose a CSV file.</p>
+    <input id="service-file" type="file" accept=".csv,text/csv" aria-label="Services CSV file" style="margin-top:0.5rem;max-width:100%;">
+    <textarea class="service-bulk" id="service-bulk" placeholder="Haircut, 35&#10;Beard trim, 20" aria-label="Service list"></textarea>
+    <button class="refresh-btn" id="upload-services" type="button" style="margin-top:0.5rem;">Upload services</button>
+    <p class="service-error hidden" id="service-error" role="alert"></p>
+  </section>
+
+  <section class="service-panel">
+    <h2>Appointments</h2>
+    <p>See customer bookings across all barbers. Barbers check customers into their live queue when they arrive.</p>
+    <input id="owner-booking-date" type="date" aria-label="Appointment date" style="margin:0.7rem 0;color:var(--cream);background:var(--pine);border:1px solid var(--fern);border-radius:0.5rem;padding:0.5rem;">
+    <div id="owner-bookings"><p>Loading appointments…</p></div>
+  </section>
 
   <div id="eod" class="eod hidden">
     <div class="eod-head">
@@ -114,6 +150,100 @@ function tickClock() {
 setInterval(tickClock, 1000);
 
 var OWNER_PIN = new URLSearchParams(window.location.search).get("pin") || "";
+var ownerBookingDate = document.getElementById("owner-booking-date");
+ownerBookingDate.value = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kuala_Lumpur", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+ownerBookingDate.onchange = loadOwnerBookings;
+function loadOwnerBookings() {
+  DB.getOwnerBookings(OWNER_PIN, ownerBookingDate.value).then(function(items) {
+    var target = document.getElementById("owner-bookings"); target.textContent = "";
+    if (!Array.isArray(items)) { target.innerHTML = '<p>Could not load appointments.</p>'; return; }
+    if (!items.length) { target.innerHTML = '<p>No appointments for this date.</p>'; return; }
+    items.forEach(function(item) {
+      var row = document.createElement("div"); row.className = "owner-booking";
+      var time = new Intl.DateTimeFormat("en-MY", { timeZone: "Asia/Kuala_Lumpur", hour: "numeric", minute: "2-digit", hour12: true }).format(new Date(item.startsAt));
+      row.textContent = time + " · " + item.barberName + " · " + item.customerName;
+      var detail = document.createElement("small"); detail.textContent = item.serviceName + " · " + item.durationMinutes + " min · " + item.phone + " · " + item.status.replace("_", " ");
+      row.appendChild(detail); target.appendChild(row);
+    });
+  }).catch(function() { document.getElementById("owner-bookings").innerHTML = '<p>Could not load appointments.</p>'; });
+}
+var ownerServices = [];
+function serviceError(message) { var el = document.getElementById("service-error"); el.textContent = message; el.classList.remove("hidden"); }
+function clearServiceError() { document.getElementById("service-error").classList.add("hidden"); }
+function loadServices() {
+  DB.getOwnerServices(OWNER_PIN).then(function(rows) {
+    if (!Array.isArray(rows)) { serviceError("Could not load services. Check the owner link or database setup."); return; }
+    ownerServices = rows;
+    var list = document.getElementById("service-list"); list.textContent = "";
+    if (!rows.length) { var empty = document.createElement("p"); empty.textContent = "No services yet. Add one below to open remote booking."; list.appendChild(empty); }
+    rows.forEach(function(item) {
+      var row = document.createElement("div"); row.className = "service-row";
+      var info = document.createElement("div"); info.textContent = item.name;
+      var detail = document.createElement("small"); detail.textContent = item.durationMinutes + " min · " + (item.isActive ? "Active" : "Hidden"); info.appendChild(detail);
+      var edit = document.createElement("button"); edit.textContent = "Edit";
+      edit.onclick = function() {
+        var name = prompt("Service name", item.name); if (name === null) return;
+        var minutes = prompt("Average minutes (5–240)", item.durationMinutes); if (minutes === null) return;
+        saveService({ id: item.id, name: name.trim(), durationMinutes: Number(minutes), isActive: item.isActive });
+      };
+      var toggle = document.createElement("button"); toggle.textContent = item.isActive ? "Hide" : "Show";
+      toggle.onclick = function() { saveService({ id: item.id, name: item.name, durationMinutes: item.durationMinutes, isActive: !item.isActive }); };
+      var actions = document.createElement("div"); actions.style.display = "flex"; actions.style.gap = "0.35rem";
+      actions.appendChild(edit); actions.appendChild(toggle);
+      row.appendChild(info); row.appendChild(actions); list.appendChild(row);
+    });
+  }).catch(function() { serviceError("Could not load services. Please refresh."); });
+}
+function saveService(item) {
+  clearServiceError();
+  return DB.saveService(OWNER_PIN, item).then(function(result) {
+    if (!result || result.error) { serviceError(result && result.error || "Could not save service."); return false; }
+    loadServices(); return true;
+  }).catch(function() { serviceError("Could not save service. Please try again."); return false; });
+}
+document.getElementById("add-service").onclick = function() {
+  var name = document.getElementById("service-name").value.trim();
+  var minutes = Number(document.getElementById("service-minutes").value);
+  if (name.length < 2 || minutes < 5 || minutes > 240) { serviceError("Enter a service name and 5–240 minutes."); return; }
+  saveService({ name: name, durationMinutes: minutes, isActive: true }).then(function(ok) {
+    if (ok) { document.getElementById("service-name").value = ""; document.getElementById("service-minutes").value = ""; }
+  });
+};
+document.getElementById("service-file").onchange = function(event) {
+  var file = event.target.files[0]; if (!file) return;
+  file.text().then(function(text) { document.getElementById("service-bulk").value = text; });
+};
+document.getElementById("upload-services").onclick = function() {
+  clearServiceError();
+  var lines = document.getElementById("service-bulk").value.split(/\r?\n/).map(function(x) { return x.trim(); }).filter(Boolean);
+  if (lines.length && /^(name|service)\s*,\s*(minutes|duration|duration_minutes)$/i.test(lines[0])) lines.shift();
+  var items = [];
+  lines.forEach(function(line, index) {
+    var cut = line.lastIndexOf(",");
+    if (cut < 1) { items.push({ error: "Line " + (index + 1) + " must be Name, minutes." }); return; }
+    var name = line.slice(0, cut).trim().replace(/^"|"$/g, "");
+    var minutes = Number(line.slice(cut + 1).trim());
+    if (name.length < 2 || !Number.isInteger(minutes) || minutes < 5 || minutes > 240) items.push({ error: "Line " + (index + 1) + " has invalid minutes." });
+    else items.push({ name: name, durationMinutes: minutes, isActive: true });
+  });
+  if (!items.length) { serviceError("Add at least one service."); return; }
+  var invalid = items.find(function(x) { return x.error; }); if (invalid) { serviceError(invalid.error); return; }
+  var button = document.getElementById("upload-services"); button.disabled = true; button.textContent = "Uploading…";
+  var saved = 0;
+  items.reduce(function(chain, item) {
+    return chain.then(function() {
+      var existing = ownerServices.find(function(s) { return s.name.toLowerCase() === item.name.toLowerCase(); });
+      if (existing) item.id = existing.id;
+      return DB.saveService(OWNER_PIN, item).then(function(result) {
+        if (result && result.error) throw new Error(result.error);
+        saved++;
+      });
+    });
+  }, Promise.resolve()).then(function() {
+    button.disabled = false; button.textContent = "Upload services";
+    document.getElementById("service-bulk").value = ""; loadServices();
+  }).catch(function(error) { button.disabled = false; button.textContent = "Upload services"; serviceError(saved + " saved. " + error.message); loadServices(); });
+};
 
 function loadAll() {
   call({ action: "getOwnerView", pin: OWNER_PIN }).then(function(res) {
@@ -201,8 +331,11 @@ function loadStats() {
 
 loadAll();
 loadStats();
+loadServices();
+loadOwnerBookings();
 setInterval(loadAll, 30000);
 setInterval(loadStats, 60000);
+setInterval(loadOwnerBookings, 30000);
 </script>
 </body>
 </html>

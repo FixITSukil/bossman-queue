@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Book a Visit — Bossman</title>
+<link rel="stylesheet" href="brand.css">
+<style>
+  body { padding: 1.25rem; }
+  main { max-width: 480px; margin: 0 auto; padding: 1rem 0 3rem; }
+  .brand { margin-bottom: 1.5rem; }
+  .brand img { width: 150px; max-width: 50%; border-radius: 0.5rem; }
+  h1 { font-family: var(--serif); font-size: 1.9rem; margin-top: 0.6rem; }
+  .lead { color: var(--cream-dim); line-height: 1.5; font-size: 0.9rem; margin-top: 0.45rem; }
+  .panel { background: var(--moss); border: 1px solid var(--line); border-radius: 1rem; padding: 1.2rem; margin-top: 1rem; box-shadow: var(--shadow); }
+  .step { color: var(--gold); font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 700; }
+  h2 { font-family: var(--serif); font-size: 1.15rem; margin: 0.25rem 0 0.9rem; }
+  label { display: block; font-size: 0.8rem; color: var(--cream-dim); margin: 0.8rem 0 0.35rem; }
+  input, select { width: 100%; color: var(--cream); background: var(--pine); border: 1px solid var(--fern); border-radius: 0.55rem; padding: 0.7rem; font: inherit; }
+  input:focus, select:focus { outline: 2px solid var(--gold); outline-offset: 1px; }
+  .choices { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.55rem; }
+  .choice { background: var(--pine); border: 1px solid var(--fern); border-radius: 0.65rem; padding: 0.8rem; color: var(--cream); font: inherit; text-align: left; cursor: pointer; }
+  .choice.selected { border-color: var(--gold); background: rgba(201,167,106,0.14); }
+  .choice small { display: block; color: var(--cream-dim); margin-top: 0.15rem; }
+  .slot-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; }
+  .slot { background: var(--pine); border: 1px solid var(--fern); border-radius: 0.5rem; color: var(--cream); padding: 0.6rem 0.2rem; font: inherit; cursor: pointer; }
+  .slot.selected { background: var(--gold); color: var(--pine); border-color: var(--gold); font-weight: 700; }
+  .muted { color: var(--cream-dim); font-size: 0.82rem; line-height: 1.45; }
+  .error { color: #f2aaa5; font-size: 0.82rem; margin-top: 0.8rem; }
+  .primary { width: 100%; padding: 0.85rem; margin-top: 1rem; font-size: 1rem; }
+  .primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .summary { border: 1px solid var(--gold); background: var(--pine); border-radius: 0.8rem; padding: 1rem; margin-top: 1rem; }
+  .summary strong { color: var(--gold); }
+  .summary p + p { margin-top: 0.4rem; }
+  .link { display: inline-block; color: var(--gold-bright); margin-top: 0.9rem; }
+  .secondary { background: transparent; color: var(--cream-dim); border: 1px solid var(--line); border-radius: 0.55rem; padding: 0.75rem; width: 100%; margin-top: 0.8rem; cursor: pointer; font: inherit; }
+  @media (max-width: 370px) { .slot-grid { grid-template-columns: repeat(3, 1fr); } }
+</style>
+</head>
+<body>
+<main>
+  <div class="brand">
+    <img src="logo.png" alt="Bossman Gentleman's Club Barbershop">
+    <h1>Book your visit</h1>
+    <p class="lead">Choose your barber, service and time. Booking times are shown in Malaysia time. The first start is 11:00 AM and the last is 10:45 PM.</p>
+  </div>
+
+  <div id="booking-form">
+    <section class="panel">
+      <div class="step">Step 1</div><h2>Choose your barber</h2>
+      <div class="choices" id="barbers"><p class="muted">Loading barbers…</p></div>
+    </section>
+    <section class="panel">
+      <div class="step">Step 2</div><h2>Choose a service</h2>
+      <div class="choices" id="services"><p class="muted">Loading services…</p></div>
+    </section>
+    <section class="panel">
+      <div class="step">Step 3</div><h2>Pick a date and time</h2>
+      <label for="booking-date">Date</label>
+      <input id="booking-date" type="date">
+      <p class="muted" style="margin:0.8rem 0;">Available start times</p>
+      <div class="slot-grid" id="slots"><p class="muted">Choose a barber and service first.</p></div>
+    </section>
+    <section class="panel">
+      <div class="step">Step 4</div><h2>Your details</h2>
+      <label for="customer-name">Name</label><input id="customer-name" maxlength="80" autocomplete="name">
+      <label for="customer-phone">Phone number</label><input id="customer-phone" type="tel" autocomplete="tel" placeholder="e.g. 60123456789">
+      <p class="muted" style="margin-top:0.7rem;">Staff use this number to find your booking. Barber contact numbers are never shared.</p>
+      <p class="error hidden" id="form-error" role="alert"></p>
+      <button class="btn-gold primary" id="book-button" type="button" disabled>Confirm booking</button>
+    </section>
+  </div>
+
+  <section class="panel hidden" id="confirmation" aria-live="polite">
+    <div class="step">Bossman booking</div><h2 id="confirmation-heading">Booking confirmed</h2>
+    <div class="summary" id="booking-summary"></div>
+    <p class="muted" style="margin-top:1rem;">Please arrive near your booked time. Staff will check you into the live queue when you arrive. Keep this page so you can see updates.</p>
+    <a class="link hidden" id="live-queue-link" href="index.html">View your live queue</a>
+    <button class="secondary" id="cancel-button" type="button">Cancel booking</button>
+    <button class="secondary hidden" id="new-booking-button" type="button">Make another booking</button>
+    <p class="error hidden" id="confirmation-error" role="alert"></p>
+  </section>
+</main>
+<script src="api.js"></script>
+<script>
+var selectedBarber = null, selectedService = null, selectedTime = null, slotRequest = 0;
+var savedBooking = null;
+var bookingKey = "bossman_remote_booking";
+var dateInput = document.getElementById("booking-date");
+var bookButton = document.getElementById("book-button");
+
+function malaysiaDate(offset) {
+  var parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kuala_Lumpur", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
+  var values = {};
+  parts.forEach(function(p) { values[p.type] = p.value; });
+  var d = new Date(Date.UTC(Number(values.year), Number(values.month) - 1, Number(values.day) + (offset || 0)));
+  return d.toISOString().slice(0, 10);
+}
+function formatStart(iso) {
+  return new Intl.DateTimeFormat("en-MY", { timeZone: "Asia/Kuala_Lumpur", weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true }).format(new Date(iso));
+}
+function errorAt(id, message) {
+  var el = document.getElementById(id);
+  el.textContent = message; el.classList.remove("hidden");
+}
+function clearError(id) { document.getElementById(id).classList.add("hidden"); }
+function updateButton() { bookButton.disabled = !(selectedBarber && selectedService && selectedTime && dateInput.value); }
+function renderChoices(targetId, items, onSelect, selectedId, meta) {
+  var target = document.getElementById(targetId); target.textContent = "";
+  items.forEach(function(item) {
+    var button = document.createElement("button"); button.type = "button";
+    button.className = "choice" + (selectedId === item.id ? " selected" : "");
+    button.textContent = item.name;
+    var small = document.createElement("small"); small.textContent = meta(item); button.appendChild(small);
+    button.onclick = function() { onSelect(item); };
+    target.appendChild(button);
+  });
+}
+var barbers = [], services = [];
+function chooseBarber(item) { selectedBarber = item; renderChoices("barbers", barbers, chooseBarber, item.id, function() { return "Available for bookings"; }); loadSlots(); }
+function chooseService(item) { selectedService = item; renderChoices("services", services, chooseService, item.id, function(s) { return s.duration_minutes + " minutes"; }); loadSlots(); }
+function loadSlots() {
+  selectedTime = null; updateButton();
+  var target = document.getElementById("slots"); target.textContent = "";
+  if (!selectedBarber || !selectedService || !dateInput.value) { target.innerHTML = '<p class="muted">Choose a barber, service and date first.</p>'; return; }
+  var request = ++slotRequest;
+  target.innerHTML = '<p class="muted">Checking available times…</p>';
+  DB.getBookingSlots(selectedBarber.id, selectedService.id, dateInput.value).then(function(slots) {
+    if (request !== slotRequest) return;
+    target.textContent = "";
+    if (!Array.isArray(slots) || !slots.length) { target.innerHTML = '<p class="muted">No times available for this date. Try another date or barber.</p>'; return; }
+    slots.forEach(function(time) {
+      var button = document.createElement("button"); button.type = "button";
+      button.className = "slot"; button.textContent = time;
+      button.onclick = function() {
+        selectedTime = time;
+        target.querySelectorAll(".slot").forEach(function(x) { x.classList.remove("selected"); });
+        button.classList.add("selected"); updateButton();
+      };
+      target.appendChild(button);
+    });
+  }).catch(function() { if (request === slotRequest) target.innerHTML = '<p class="error">Could not load times. Please try again.</p>'; });
+}
+dateInput.min = malaysiaDate(0); dateInput.max = malaysiaDate(14); dateInput.value = dateInput.min;
+dateInput.addEventListener("change", loadSlots);
+Promise.all([DB.getBarbers(), DB.getServices()]).then(function(results) {
+  barbers = results[0].filter(function(b) { return b.role === "barber"; });
+  services = results[1] || [];
+  if (barbers.length) renderChoices("barbers", barbers, chooseBarber, null, function() { return "Available for bookings"; });
+  else document.getElementById("barbers").innerHTML = '<p class="muted">No barbers available right now.</p>';
+  if (services.length) renderChoices("services", services, chooseService, null, function(s) { return s.duration_minutes + " minutes"; });
+  else document.getElementById("services").innerHTML = '<p class="muted">Services are being added. Please check back soon.</p>';
+}).catch(function() { errorAt("form-error", "Could not load the booking menu. Please refresh."); });
+
+bookButton.onclick = function() {
+  clearError("form-error");
+  var name = document.getElementById("customer-name").value.trim();
+  var phone = document.getElementById("customer-phone").value.replace(/\D/g, "");
+  if (name.length < 2 || phone.length < 9 || phone.length > 15) { errorAt("form-error", "Enter your name and a valid phone number."); return; }
+  if (dateInput.value < malaysiaDate(0) || dateInput.value > malaysiaDate(14)) { errorAt("form-error", "Choose a date within the next 14 days."); return; }
+  bookButton.disabled = true; bookButton.textContent = "Confirming…";
+  DB.bookAppointment({ barberId: selectedBarber.id, serviceId: selectedService.id, day: dateInput.value,
+    time: selectedTime, customerName: name, phone: phone }).then(function(result) {
+    bookButton.textContent = "Confirm booking"; updateButton();
+    if (!result || result.error) { errorAt("form-error", (result && result.error) || "Could not book. Please try again."); loadSlots(); return; }
+    savedBooking = { id: result.id, token: result.token };
+    localStorage.setItem(bookingKey, JSON.stringify(savedBooking));
+    showBooking(result);
+  }).catch(function() { bookButton.textContent = "Confirm booking"; updateButton(); errorAt("form-error", "Could not book. Please try again."); });
+};
+function showBooking(booking) {
+  document.getElementById("booking-form").classList.add("hidden");
+  document.getElementById("confirmation").classList.remove("hidden");
+  var summary = document.getElementById("booking-summary"); summary.textContent = "";
+  [["Barber", booking.barber], ["Service", booking.service + " · " + booking.durationMinutes + " min"], ["Time", formatStart(booking.startsAt) + " MYT"]].forEach(function(row) {
+    var p = document.createElement("p"); var strong = document.createElement("strong"); strong.textContent = row[0] + ": "; p.appendChild(strong); p.appendChild(document.createTextNode(row[1])); summary.appendChild(p);
+  });
+  var checkedIn = booking.status === "checked_in";
+  document.getElementById("confirmation-heading").textContent = checkedIn ? "You're checked in" : booking.status === "cancelled" ? "Booking cancelled" : "Booking confirmed";
+  document.getElementById("cancel-button").classList.toggle("hidden", booking.status === "cancelled" || checkedIn || booking.status === "no_show");
+  document.getElementById("new-booking-button").classList.toggle("hidden", booking.status !== "cancelled" && booking.status !== "no_show");
+  var liveLink = document.getElementById("live-queue-link");
+  liveLink.classList.toggle("hidden", !checkedIn || !booking.queueEntryId);
+  if (checkedIn && booking.queueEntryId && booking.barberId) {
+    liveLink.onclick = function() {
+      localStorage.setItem("bossman_queue", JSON.stringify({ entryId: booking.queueEntryId, id: booking.barberId, name: booking.barber, avgMinutes: booking.durationMinutes }));
+    };
+  }
+}
+document.getElementById("cancel-button").onclick = function() {
+  if (!savedBooking || !confirm("Cancel this booking?")) return;
+  clearError("confirmation-error");
+  DB.cancelBooking(savedBooking.id, savedBooking.token).then(function(result) {
+    if (!result || result.error) { errorAt("confirmation-error", result && result.error || "Could not cancel. Please try again."); return; }
+    refreshBooking();
+  }).catch(function() { errorAt("confirmation-error", "Could not cancel. Please try again."); });
+};
+document.getElementById("new-booking-button").onclick = function() { localStorage.removeItem(bookingKey); location.reload(); };
+function refreshBooking() {
+  if (!savedBooking) return;
+  DB.getBooking(savedBooking.id, savedBooking.token).then(function(result) { if (result && result.id) showBooking(result); }).catch(function() {});
+}
+try { savedBooking = JSON.parse(localStorage.getItem(bookingKey) || "null"); } catch (e) { savedBooking = null; }
+if (savedBooking && savedBooking.id && savedBooking.token) refreshBooking();
+setInterval(refreshBooking, 15000);
+</script>
+</body>
+</html>
