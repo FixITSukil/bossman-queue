@@ -66,6 +66,47 @@ var DB = {
   getDailyStats: function() { return sbRpc("get_daily_stats", {}); }
 };
 
+// Remote appointments use separate RPCs so the counter QR and geofence remain in force for walk-ins.
+DB.getServices = function() {
+  return sbSelect("services_public?order=sort.asc,name.asc");
+};
+DB.getBookingSlots = function(barberId, serviceId, day) {
+  return sbRpc("booking_slots", { p_barber_id: barberId, p_service_id: serviceId, p_day: day });
+};
+DB.bookAppointment = function(p) {
+  return sbRpc("book_appointment", {
+    p_barber_id: p.barberId, p_service_id: p.serviceId, p_day: p.day,
+    p_time: p.time, p_customer_name: p.customerName, p_phone: p.phone
+  });
+};
+DB.getBooking = function(id, token) {
+  return sbRpc("get_booking", { p_booking_id: id, p_customer_token: token });
+};
+DB.cancelBooking = function(id, token) {
+  return sbRpc("cancel_booking", { p_booking_id: id, p_customer_token: token });
+};
+DB.getBarberBookings = function(pin, day) {
+  return sbRpc("get_bookings_for_barber", { p_pin: pin, p_day: day });
+};
+DB.checkInBooking = function(pin, id) {
+  return sbRpc("check_in_booking", { p_pin: pin, p_booking_id: id });
+};
+DB.bookingNoShow = function(pin, id) {
+  return sbRpc("booking_no_show", { p_pin: pin, p_booking_id: id });
+};
+DB.getOwnerServices = function(pin) {
+  return sbRpc("get_owner_services", { p_owner_pin: pin });
+};
+DB.getOwnerBookings = function(pin, day) {
+  return sbRpc("get_owner_bookings", { p_owner_pin: pin, p_day: day });
+};
+DB.saveService = function(pin, service) {
+  return sbRpc("save_service", {
+    p_owner_pin: pin, p_service_id: service.id || null, p_name: service.name,
+    p_duration_minutes: service.durationMinutes, p_is_active: service.isActive
+  });
+};
+
 // Compatibility shim used by the pages
 function call(params) {
   switch (params.action) {
@@ -83,6 +124,17 @@ function call(params) {
     case "getOwnerView":   return DB.getOwnerView(params.pin);
     case "getToken":       return DB.getToken(params.kioskSecret);
     case "getDailyStats":  return DB.getDailyStats();
+    case "getServices":    return DB.getServices();
+    case "bookingSlots":   return DB.getBookingSlots(params.barberId, params.serviceId, params.day);
+    case "bookAppointment":return DB.bookAppointment(params);
+    case "getBooking":     return DB.getBooking(params.id, params.token);
+    case "cancelBooking":  return DB.cancelBooking(params.id, params.token);
+    case "getBarberBookings": return DB.getBarberBookings(params.pin, params.day);
+    case "checkInBooking": return DB.checkInBooking(params.pin, params.id);
+    case "bookingNoShow":  return DB.bookingNoShow(params.pin, params.id);
+    case "getOwnerServices": return DB.getOwnerServices(params.pin);
+    case "getOwnerBookings": return DB.getOwnerBookings(params.pin, params.day);
+    case "saveService":    return DB.saveService(params.pin, params.service);
     default:                return Promise.resolve({ error: "Unknown action" });
   }
 }

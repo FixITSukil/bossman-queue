@@ -57,6 +57,14 @@
   .empty { text-align: center; color: var(--cream-dim); padding: 2.5rem 1rem; font-size: 0.92rem; letter-spacing: 0.03em; }
   .queue-stack { display: flex; flex-direction: column; gap: 0.5rem; }
   .refresh-note { text-align: center; font-size: 0.68rem; color: var(--cream-dim); opacity: 0.6; padding-top: 0.5rem; letter-spacing: 0.05em; }
+  .booking-date { color: var(--cream); background: var(--pine); border: 1px solid var(--fern); border-radius: 0.5rem; padding: 0.4rem; font: inherit; width: 100%; margin: 0.4rem 0 0.8rem; }
+  .booking-item { padding: 0.85rem; background: var(--moss); border: 1px solid var(--line); border-radius: 0.7rem; margin-bottom: 0.5rem; }
+  .booking-time { color: var(--gold); font-weight: 700; font-size: 0.84rem; }
+  .booking-meta { color: var(--cream-dim); font-size: 0.76rem; margin-top: 0.25rem; }
+  .booking-actions { display: flex; gap: 0.5rem; margin-top: 0.7rem; }
+  .booking-actions button { flex: 1; border: 1px solid var(--line); border-radius: 0.45rem; padding: 0.55rem; font: inherit; font-size: 0.78rem; cursor: pointer; }
+  .booking-checkin { background: var(--gold); color: var(--pine); }
+  .booking-noshow { background: var(--pine); color: var(--cream-dim); }
 </style>
 </head>
 <body>
@@ -125,6 +133,13 @@
     <p class="refresh-note">Auto-refreshes every 10 seconds</p>
   </div>
 
+  <div>
+    <div class="section-header"><span class="section-title">Appointments</span></div>
+    <label for="booking-date" class="sub">Booking date</label>
+    <input class="booking-date" id="booking-date" type="date">
+    <div id="booking-list"><p class="empty">Loading appointments…</p></div>
+  </div>
+
 </div>
 
 <script src="api.js"></script>
@@ -133,6 +148,10 @@ var PIN    = new URLSearchParams(window.location.search).get("pin") || "";
 var barber = null;
 var servingId = null;
 var servingCustomer = null;
+var nextDuration = 35;
+var bookingDate = document.getElementById("booking-date");
+bookingDate.value = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kuala_Lumpur", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+bookingDate.onchange = loadBookings;
 
 function remainingCut(serving, avg) {
   if (!serving) return 0;
@@ -161,7 +180,9 @@ function init() {
     document.getElementById("barber-name").textContent = b.name;
     updateToggleBtn();
     loadQueue();
+    loadBookings();
     setInterval(loadQueue, 10000);
+    setInterval(loadBookings, 30000);
   }).catch(function() {
     document.querySelector(".page").innerHTML = "<div class='card'><p style='color:#e88'>Failed to load. Please refresh.</p></div>";
   });
@@ -172,9 +193,42 @@ function loadQueue() {
   call({ action: "getBarberQueue", pin: PIN }).then(renderQueue).catch(function() {});
 }
 
+function loadBookings() {
+  if (!barber) return;
+  DB.getBarberBookings(PIN, bookingDate.value).then(function(items) {
+    var list = document.getElementById("booking-list"); list.textContent = "";
+    if (!Array.isArray(items)) { list.innerHTML = '<p class="empty">Appointments are unavailable. Please refresh.</p>'; return; }
+    if (!items.length) { list.innerHTML = '<p class="empty">No appointments for this date.</p>'; return; }
+    items.forEach(function(item) {
+      var card = document.createElement("div"); card.className = "booking-item";
+      var time = document.createElement("div"); time.className = "booking-time";
+      time.textContent = new Intl.DateTimeFormat("en-MY", { timeZone: "Asia/Kuala_Lumpur", hour: "numeric", minute: "2-digit", hour12: true }).format(new Date(item.startsAt)) + " · " + item.status.replace("_", " ");
+      var name = document.createElement("div"); name.className = "queue-name"; name.textContent = item.customerName;
+      var meta = document.createElement("div"); meta.className = "booking-meta"; meta.textContent = item.serviceName + " · " + item.durationMinutes + " min · " + item.phone;
+      card.appendChild(time); card.appendChild(name); card.appendChild(meta);
+      if (item.status === "booked") {
+        var actions = document.createElement("div"); actions.className = "booking-actions";
+        var checkin = document.createElement("button"); checkin.type = "button"; checkin.className = "booking-checkin"; checkin.textContent = "Check in";
+        checkin.onclick = function() {
+          checkin.disabled = true;
+          DB.checkInBooking(PIN, item.id).then(function(res) { if (res && res.error) alert(res.error); loadBookings(); loadQueue(); }).catch(function() { alert("Could not check in. Please try again."); checkin.disabled = false; });
+        };
+        var noShow = document.createElement("button"); noShow.type = "button"; noShow.className = "booking-noshow"; noShow.textContent = "No show";
+        noShow.onclick = function() {
+          if (!confirm("Mark " + item.customerName + " as a no show?")) return;
+          DB.bookingNoShow(PIN, item.id).then(function(res) { if (res && res.error) alert(res.error); loadBookings(); }).catch(function() { alert("Could not update booking."); });
+        };
+        actions.appendChild(checkin); actions.appendChild(noShow); card.appendChild(actions);
+      }
+      list.appendChild(card);
+    });
+  }).catch(function() { document.getElementById("booking-list").innerHTML = '<p class="empty">Appointments are unavailable. Please refresh.</p>'; });
+}
+
 function renderQueue(queue) {
   queue = queue || [];
   var waiting = queue.filter(function(q) { return q.status === "waiting"; });
+  nextDuration = waiting.length && waiting[0].durationMinutes > 0 ? waiting[0].durationMinutes : 35;
   var serving  = queue.find(function(q)  { return q.status === "called"; });
 
   var avg = barber ? barber.avgMinutes || 30 : 30;
@@ -222,7 +276,7 @@ function renderQueue(queue) {
 }
 
 function openCallModal() {
-  document.getElementById("duration-input").value = 30;
+  document.getElementById("duration-input").value = nextDuration;
   document.getElementById("duration-modal").classList.remove("hidden");
 }
 function closeModal() { document.getElementById("duration-modal").classList.add("hidden"); }
