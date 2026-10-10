@@ -16,7 +16,12 @@ function sbSelect(path) {
 function sbRpc(fn, body) {
   return fetch(SUPABASE_URL + "/rest/v1/rpc/" + fn, {
     method: "POST", headers: SB_HEADERS, body: JSON.stringify(body || {})
-  }).then(function(r) { return r.json(); });
+  }).then(function(r) {
+    return r.json().then(function(data) {
+      if (!r.ok) throw new Error(data.message || data.error || "Server request failed.");
+      return data;
+    });
+  });
 }
 
 function mapBarber(r) {
