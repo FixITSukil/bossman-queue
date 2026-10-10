@@ -49,7 +49,7 @@ var DB = {
   joinQueue: function(p) {
     return sbRpc("join_queue", {
       p_barber_id: p.barberId, p_barber_name: p.barberName,
-      p_customer_name: p.customerName, p_phone: p.phone, p_token: p.t || ""
+      p_customer_name: p.customerName, p_phone: p.phone, p_token: ""
     });
   },
   leaveQueue: function(id) { return sbRpc("leave_queue", { p_entry_id: id }); },
@@ -63,7 +63,6 @@ var DB = {
   // Owner (secret-link gated)
   getOwnerView: function(pin) { return sbRpc("get_owner_view", { p_owner_pin: pin }); },
   // Misc
-  getToken: function(kioskSecret) { return sbRpc("get_qr_token", { p_kiosk_secret: kioskSecret || "" }); },
   getDailyStats: function() { return sbRpc("get_daily_stats", {}); }
 };
 
@@ -130,7 +129,6 @@ function call(params) {
     case "setStatus":      return DB.setStatus(params.pin, params.id, params.status);
     case "toggleActive":   return DB.toggleActive(params.pin);
     case "getOwnerView":   return DB.getOwnerView(params.pin);
-    case "getToken":       return DB.getToken(params.kioskSecret);
     case "getDailyStats":  return DB.getDailyStats();
     case "getServices":    return DB.getServices();
     case "bookingSlots":   return DB.getBookingSlots(params.barberId, params.serviceId, params.day);

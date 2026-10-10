@@ -17,11 +17,9 @@
   h1 { font-family: var(--serif); font-weight: 800; letter-spacing: 0.2em; color: var(--cream); font-size: 2rem; text-transform: uppercase; margin-left: 0.2em; }
   .tag { color: var(--gold); letter-spacing: 0.35em; text-transform: uppercase; font-size: 0.7rem; margin-top: 0.4rem; }
   .qr-frame { background: var(--cream); padding: 1.25rem; border-radius: 1rem; margin: 2rem auto 1.25rem; display: inline-block; box-shadow: 0 12px 40px rgba(0,0,0,0.45); }
-  #qr { width: 300px; height: 300px; display: block; }
+  #qr { width: 300px; height: 300px; max-width: 70vw; max-height: 70vw; display: block; }
   .scan-label { font-family: var(--serif); color: var(--cream); font-size: 1.4rem; }
-  .countdown { color: var(--cream-dim); font-size: 0.85rem; margin-top: 0.6rem; letter-spacing: 0.08em; }
-  .countdown b { color: var(--gold); }
-  .err { color: #e88; margin-top: 2rem; }
+  .permanent-note { color: var(--cream-dim); font-size: 0.85rem; margin-top: 0.6rem; }
 </style>
 </head>
 <body>
@@ -29,113 +27,24 @@
   <h1>Bossman</h1>
   <div class="tag">Gentleman's Club</div>
 
-  <div class="qr-frame"><canvas id="qr"></canvas></div>
+  <div class="qr-frame"><img id="qr" src="shop-qr.png" alt="Scan to open Bossman's in-shop queue"></div>
   <div class="scan-label">Scan to Join the Queue</div>
-  <div class="countdown">Code refreshes in <b id="count">--:--</b></div>
+  <div class="permanent-note">This QR code does not expire.</div>
 
-<script src="api.js"></script>
 <script>
-var SITE = "https://fixitsukil.github.io/bossman-queue/";
-var KIOSK_SECRET = new URLSearchParams(window.location.search).get("kiosk") || "";
-var currentToken = null;
-var secondsLeft = 0;
-var wakeLock = null;
-var qrLoader = null;
-
-function ensureQRCode() {
-  if (window.QRCode && typeof window.QRCode.toCanvas === "function") {
-    return Promise.resolve();
-  }
-  if (qrLoader) return qrLoader;
-
-  var urls = [
-    "https://cdn.jsdelivr.net/npm/qrcode@1.5.0/build/qrcode.js",
-    "https://unpkg.com/qrcode@1.5.0/build/qrcode.js"
-  ];
-
-  qrLoader = new Promise(function(resolve, reject) {
-    var i = 0;
-    function tryNext() {
-      if (i >= urls.length) {
-        reject(new Error("QR renderer unavailable"));
-        return;
-      }
-      var s = document.createElement("script");
-      s.src = urls[i++];
-      s.async = true;
-      s.onload = function() {
-        if (window.QRCode && typeof window.QRCode.toCanvas === "function") resolve();
-        else tryNext();
-      };
-      s.onerror = tryNext;
-      document.head.appendChild(s);
-    }
-    tryNext();
-  });
-
-  return qrLoader;
-}
-
-function drawQR(token) {
-  ensureQRCode().then(function() {
-    QRCode.toCanvas(document.getElementById("qr"), SITE + "?t=" + token, { width: 300, margin: 1 }, function(err) {
-      if (err) showQrErr();
-    });
-  }).catch(showQrErr);
-}
-
-function refreshToken() {
-  if (!KIOSK_SECRET) {
-    document.querySelector(".countdown").innerHTML = "<span class='err'>This iPad link is not configured.</span>";
-    return;
-  }
-  call({ action: "getToken", kioskSecret: KIOSK_SECRET }).then(function(r) {
-    if (!r || !r.token) { showServerErr(); return; }
-    secondsLeft = r.secondsLeft;
-    if (r.token !== currentToken) {
-      currentToken = r.token;
-      drawQR(currentToken);
-    }
-  }).catch(showServerErr);
-}
-
-function showServerErr() {
-  document.querySelector(".countdown").innerHTML = "<span class='err'>Can't reach queue server. Check Wi-Fi.</span>";
-}
-
-function showQrErr() {
-  document.querySelector(".countdown").innerHTML = "<span class='err'>QR display failed to load. Refresh the page.</span>";
-}
-
-function tick() {
-  if (secondsLeft > 0) secondsLeft--;
-  var m = Math.floor(secondsLeft / 60), s = secondsLeft % 60;
-  var count = document.getElementById("count");
-  if (count) count.textContent = m + ":" + (s < 10 ? "0" + s : s);
-  if (secondsLeft <= 0) refreshToken();
-}
-
 async function keepScreenAwake() {
   if (!("wakeLock" in navigator)) return;
   try {
-    wakeLock = await navigator.wakeLock.request("screen");
+    await navigator.wakeLock.request("screen");
   } catch (e) {
     // iPad Auto-Lock settings remain the fallback.
   }
 }
 
 document.addEventListener("visibilitychange", function() {
-  if (document.visibilityState === "visible") {
-    keepScreenAwake();
-    refreshToken();
-  }
+  if (document.visibilityState === "visible") keepScreenAwake();
 });
-
-ensureQRCode().catch(function() {});
 keepScreenAwake();
-refreshToken();
-setInterval(tick, 1000);
-setInterval(refreshToken, 30000);
 </script>
 </body>
 </html>
