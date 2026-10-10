@@ -90,7 +90,7 @@
 
   <section class="service-panel">
     <h2>Services & average times</h2>
-    <p>Customers see active services and the minutes you set here. Existing bookings keep the service time they were booked with.</p>
+    <p>Keep service times here for staff reference. Customers joining the live queue only choose a barber. Existing appointments keep the service time they were booked with.</p>
     <div id="service-list"><p>Loading services…</p></div>
     <div class="service-form">
       <input id="service-name" type="text" maxlength="80" placeholder="Service name" aria-label="Service name">
@@ -175,7 +175,7 @@ function loadServices() {
     if (!Array.isArray(rows)) { serviceError("Could not load services. Check the owner link or database setup."); return; }
     ownerServices = rows;
     var list = document.getElementById("service-list"); list.textContent = "";
-    if (!rows.length) { var empty = document.createElement("p"); empty.textContent = "No services yet. Add one below to open remote booking."; list.appendChild(empty); }
+    if (!rows.length) { var empty = document.createElement("p"); empty.textContent = "No services yet. Add them here for staff reference; the live queue is already open to customers."; list.appendChild(empty); }
     rows.forEach(function(item) {
       var row = document.createElement("div"); row.className = "service-row";
       var info = document.createElement("div"); info.textContent = item.name;

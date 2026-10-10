@@ -164,7 +164,7 @@ tickClock();
 
 var STORE_KEY = "bossman_queue";
 function saveEntry(barber) {
-  localStorage.setItem(STORE_KEY, JSON.stringify({ entryId: myEntryId, id: barber.id, name: barber.name, avgMinutes: AVG, facialEntryId: myFacialEntryId, facialBarberId: myFacialBarberId }));
+  localStorage.setItem(STORE_KEY, JSON.stringify({ entryId: myEntryId, id: barber.id, name: barber.name, avgMinutes: barber.avgMinutes || AVG, facialEntryId: myFacialEntryId, facialBarberId: myFacialBarberId }));
 }
 function clearEntry() { localStorage.removeItem(STORE_KEY); }
 
@@ -175,7 +175,7 @@ function resumeEntry() {
   var saved;
   try { saved = JSON.parse(raw); } catch (e) { clearEntry(); loadBarbers(); return; }
 
-  selectedBarber = { id: saved.id, name: saved.name, avgMinutes: AVG };
+  selectedBarber = { id: saved.id, name: saved.name, avgMinutes: saved.avgMinutes || AVG };
   myEntryId  = saved.entryId;
   myBarberId = saved.id;
   myFacialEntryId  = saved.facialEntryId || null;
@@ -207,7 +207,7 @@ function showForm(barber) {
   document.getElementById("form-title").textContent = "Join " + barber.name + "'s queue";
   document.getElementById("form-meta").textContent = therapist
     ? (count + " waiting · facial treatments")
-    : (count + " waiting · ~" + (count * AVG) + " min");
+    : (count + " waiting · ~" + (count * (barber.avgMinutes || AVG)) + " min");
   // Facial add-on checkbox only for barbers, and only if a therapist is available
   var facialRow = document.getElementById("facial-row");
   if (!therapist && facialTherapist) facialRow.classList.remove("hidden");
@@ -220,12 +220,11 @@ function showForm(barber) {
   document.getElementById("inp-phone").value = "";
 }
 
-var AVG = 35; // flat average wait estimate per customer (minutes)
+var AVG = 35; // fallback average wait estimate per customer (minutes)
 
 function loadBarbers() {
   call({ action: "getBarbers" }).then(function(data) {
     barbers = data || [];
-    barbers.forEach(function(b) { b.avgMinutes = AVG; });
     var done = 0;
     if (barbers.length === 0) { renderBarbers(); return; }
     barbers.forEach(function(b) {
@@ -254,7 +253,7 @@ function makeCard(b, therapist) {
   btn.className = "card";
   var meta = therapist
     ? (count + ' waiting &nbsp;·&nbsp; facial treatments')
-    : (count + ' waiting &nbsp;·&nbsp; ~' + (count * AVG) + ' min');
+    : (count + ' waiting &nbsp;·&nbsp; ~' + (count * (b.avgMinutes || AVG)) + ' min');
   var tag = therapist ? ' <span class="role-tag">Facial Therapist</span>' : '';
   btn.innerHTML = '<div><div class="card-name">' + b.name + tag + '</div><div class="card-meta">' + meta + '</div></div><div class="arrow">›</div>';
   btn.onclick = function() { showForm(b); };

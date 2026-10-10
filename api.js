@@ -107,6 +107,13 @@ DB.saveService = function(pin, service) {
   });
 };
 
+// Public link: join the live queue remotely during shop hours.
+DB.joinQueueRemote = function(p) {
+  return sbRpc("join_queue_remote", {
+    p_barber_id: p.barberId, p_customer_name: p.customerName, p_phone: p.phone
+  });
+};
+
 // Compatibility shim used by the pages
 function call(params) {
   switch (params.action) {
