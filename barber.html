@@ -174,7 +174,7 @@
 
 </div>
 
-<script src="api.js?v=20261010f"></script>
+<script src="api.js?v=20261011a"></script>
 <script>
 var PIN    = new URLSearchParams(window.location.search).get("pin") || "";
 var barber = null;
@@ -488,6 +488,9 @@ function toggleActive() {
   call({ action: "toggleActive", pin: PIN }).then(function(res) {
     if (!res || res.error || typeof res.isActive !== "boolean") throw new Error("Availability could not be changed.");
     barber.isActive = res.isActive;
+    barber.isAvailable = res.isAvailable;
+    barber.offToday = res.offToday;
+    barber.isListed = res.isListed;
   }).catch(function() {
     error.textContent = "Could not change your availability. Please try again.";
     error.classList.remove("hidden");
@@ -501,14 +504,21 @@ function refreshAvailability() {
   call({ action: "getBarberByPin", pin: PIN }).then(function(latest) {
     if (latest && typeof latest.isActive === "boolean" && !changingAvailability) {
       barber.isActive = latest.isActive;
+      barber.isAvailable = latest.isAvailable;
+      barber.offToday = latest.offToday;
+      barber.isListed = latest.isListed;
       updateToggleBtn();
     }
   }).catch(function() {});
 }
 function updateToggleBtn() {
   var btn = document.getElementById("toggle-btn");
-  document.getElementById("availability-title").textContent = barber.isActive ? "Accepting new customers" : "Not accepting new customers";
-  document.getElementById("availability-note").textContent = barber.isActive
+  document.getElementById("availability-title").textContent = !barber.isListed ? "Hidden by owner" : barber.offToday ? "Scheduled off day" : barber.isActive ? "Accepting new customers" : "Not accepting new customers";
+  document.getElementById("availability-note").textContent = !barber.isListed
+    ? "The owner has hidden your profile from customer pages. Your current queue stays visible here."
+    : barber.offToday
+    ? "The owner marked today as your weekly off day. New joins are paused automatically; your current queue stays with you."
+    : barber.isActive
     ? "Customers can choose you on the QR and booking pages. You can stop new joins while you finish your current queue."
     : "New customers cannot choose you. Everyone already in your queue stays there. Turn this on when you are ready.";
   btn.textContent = barber.isActive ? "Stop taking new customers" : "Start taking new customers";

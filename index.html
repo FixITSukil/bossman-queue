@@ -26,6 +26,7 @@
   }
   .card:hover { border-color: var(--gold); }
   .card:active { transform: translateY(1px); }
+  .card:disabled { opacity: 0.58; cursor: not-allowed; }
   .card-name { font-family: var(--serif); font-size: 1.15rem; font-weight: 700; color: var(--cream); }
   .card-meta { color: var(--cream-dim); font-size: 0.82rem; margin-top: 0.3rem; letter-spacing: 0.02em; }
   .arrow { color: var(--gold); font-size: 1.5rem; }
@@ -170,7 +171,7 @@
   </details>
 </section>
 
-<script src="api.js?v=20261010g"></script>
+<script src="api.js?v=20261011a"></script>
 <script src="pwa.js?v=20261010d"></script>
 <script>
 var barbers = [];
@@ -294,7 +295,7 @@ function syncCancelButton() {
 }
 
 function showForm(barber) {
-  if (!joiningOpen()) { updateHoursUI(); return; }
+  if (!joiningOpen() || !barber.isAvailable) { updateHoursUI(); return; }
   selectedBarber = barber;
   var count = queueCounts[barber.id] || 0;
   var therapist = isTherapist(barber);
@@ -323,10 +324,13 @@ function loadBarbers() {
   call({ action: "getBarbers" }).then(function(data) {
     if (!Array.isArray(data)) throw new Error("Could not load workers.");
     barbers = data;
+    var selectedNow = selectedBarber && barbers.find(function(b) { return b.id === selectedBarber.id; });
     if (selectedBarber && !document.getElementById("step-form").classList.contains("hidden")
-        && !barbers.some(function(b) { return b.id === selectedBarber.id; })) {
+        && (!selectedNow || !selectedNow.isAvailable)) {
       selectedBarber = null;
       showPick();
+    } else if (selectedNow) {
+      selectedBarber = selectedNow;
     }
     return Promise.all(barbers.map(function(b) {
       return call({ action: "getQueue", barberId: b.id }).then(function(q) {
@@ -350,12 +354,18 @@ function makeCard(b, therapist) {
   var count = queueCounts[b.id] || 0;
   var btn = document.createElement("button");
   btn.className = "card";
-  var meta = therapist
-    ? (count + ' waiting &nbsp;·&nbsp; facial treatments')
-    : (count + ' waiting &nbsp;·&nbsp; ~' + (count * (b.avgMinutes || AVG)) + ' min');
-  var tag = therapist ? ' <span class="role-tag">Facial Therapist</span>' : '';
-  btn.innerHTML = '<div><div class="card-name">' + b.name + tag + '</div><div class="card-meta">' + meta + '</div></div><div class="arrow">›</div>';
-  btn.onclick = function() { showForm(b); };
+  btn.disabled = !b.isAvailable;
+  var meta = !b.isAvailable ? (b.offToday ? "Off today" : "Not taking customers") : therapist
+    ? (count + " waiting · facial treatments")
+    : (count + " waiting · ~" + (count * (b.avgMinutes || AVG)) + " min");
+  var details = document.createElement("div");
+  var title = document.createElement("div"); title.className = "card-name"; title.textContent = b.name;
+  if (therapist) { var tag = document.createElement("span"); tag.className = "role-tag"; tag.textContent = "Facial Therapist"; title.appendChild(tag); }
+  var subtitle = document.createElement("div"); subtitle.className = "card-meta"; subtitle.textContent = meta;
+  details.appendChild(title); details.appendChild(subtitle);
+  var arrow = document.createElement("div"); arrow.className = "arrow"; arrow.textContent = b.isAvailable ? "›" : "";
+  btn.appendChild(details); btn.appendChild(arrow);
+  btn.onclick = function() { if (b.isAvailable) showForm(b); };
   return btn;
 }
 
@@ -364,7 +374,7 @@ function renderBarbers() {
   list.innerHTML = "";
   var realBarbers = barbers.filter(function(b) { return !isTherapist(b); });
   var therapists  = barbers.filter(function(b) { return isTherapist(b); });
-  facialTherapist = therapists[0] || null;
+  facialTherapist = therapists.find(function(b) { return b.isAvailable; }) || null;
 
   if (barbers.length === 0) {
     list.innerHTML = "<div class='closed'><div class='ico'>🚫</div><div class='ttl'>No workers are accepting new customers right now</div><div class='txt'>Please check back shortly.</div></div>";

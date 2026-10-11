@@ -1,6 +1,8 @@
 -- ============================================================
 -- BOSSMAN QUEUE — Production security hardening
--- Run after schema.sql. Safe to re-run.
+-- Historical baseline: run after schema.sql on a fresh database, then apply
+-- supabase/migrations/ in timestamp order. Do not re-run this baseline after
+-- migrations; it contains older versions of functions and public views.
 -- ============================================================
 
 -- Private dashboard and kiosk secrets are generated on first setup.
