@@ -83,6 +83,10 @@
   .worker-days label { display: flex; align-items: center; gap: 0.3rem; margin: 0; border: 1px solid var(--fern); border-radius: 0.5rem; padding: 0.4rem 0.5rem; }
   .worker-check { display: flex !important; align-items: center; gap: 0.45rem; color: var(--cream) !important; }
   .worker-error { color: #f2aaa5 !important; }
+  .worker-actions .delete-worker { color: #f2aaa5; border-color: #a6524d; }
+  .export-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.8rem; }
+  .export-actions button { background: var(--gold); color: var(--pine); border: 0; border-radius: 0.5rem; padding: 0.55rem 0.7rem; font: inherit; font-size: 0.82rem; cursor: pointer; }
+  .export-actions button:disabled { opacity: 0.55; cursor: wait; }
 </style>
 </head>
 <body>
@@ -128,6 +132,16 @@
   </section>
 
   <section class="service-panel">
+    <h2>Customer database</h2>
+    <p>Customer names and phone numbers from the live queue and older appointments are stored in the private database. Download a customer contact list or the full booking history as CSV.</p>
+    <div class="export-actions">
+      <button type="button" id="export-customers">Download customers CSV</button>
+      <button type="button" id="export-history">Download booking history CSV</button>
+    </div>
+    <p id="export-message" role="status"></p>
+  </section>
+
+  <section class="service-panel">
     <h2>Services & average times</h2>
     <p>Keep service times here for staff reference. Customers joining the live queue only choose a barber. Existing appointments keep the service time they were booked with.</p>
     <div id="service-list"><p>Loading services…</p></div>
@@ -170,7 +184,7 @@
 
 </div>
 
-<script src="api.js?v=20261011a"></script>
+<script src="api.js?v=20261011b"></script>
 <script>
 function remainingCut(serving, avg) {
   if (!serving) return 0;
@@ -224,6 +238,8 @@ function renderWorkerManagement() {
     }));
     actions.appendChild(workerAction("Copy staff link", function() { copyWorkerLink(worker); }));
     actions.appendChild(workerAction("Reset staff link", function() { resetWorkerLink(worker); }));
+    var deleteButton = workerAction("Delete", function() { deleteWorker(worker); });
+    deleteButton.classList.add("delete-worker"); actions.appendChild(deleteButton);
     row.appendChild(name); row.appendChild(detail); row.appendChild(actions); target.appendChild(row);
   });
 }
@@ -243,6 +259,82 @@ function resetWorkerLink(worker) {
     loadAll();
   }).catch(function(error) { workerError(error.message); });
 }
+function deleteWorker(worker) {
+  if (!confirm("Delete " + worker.name + " from the barber list? Their private link will stop working. Past customer records will be kept.")) return;
+  clearWorkerError();
+  DB.deleteBarber(OWNER_PIN, worker.id).then(function(result) {
+    if (!result || result.error) throw new Error(result && result.error || "Could not delete worker.");
+    workerMessage(worker.name + " deleted from the barber list.");
+    loadAll();
+  }).catch(function(error) { workerError(error.message); });
+}
+
+function fetchAllCustomerRecords() {
+  var records = [];
+  function next() {
+    return DB.getOwnerCustomerRecords(OWNER_PIN, records.length, 500).then(function(result) {
+      if (!result || result.error || !Array.isArray(result.records)) throw new Error(result && result.error || "Could not load customer records.");
+      records.push.apply(records, result.records);
+      return result.records.length === 500 ? next() : records;
+    });
+  }
+  return next();
+}
+function csvCell(value) {
+  var text = String(value == null ? "" : value);
+  if (/^[\s]*[=+\-@\t\r]/.test(text)) text = "'" + text;
+  return '"' + text.replace(/"/g, '""') + '"';
+}
+function downloadCsv(filename, headings, rows) {
+  var lines = [headings.map(csvCell).join(",")];
+  rows.forEach(function(row) { lines.push(row.map(csvCell).join(",")); });
+  var blob = new Blob(["\uFEFF" + lines.join("\r\n") + "\r\n"], { type: "text/csv;charset=utf-8" });
+  var link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = filename;
+  document.body.appendChild(link); link.click(); link.remove();
+  setTimeout(function() { URL.revokeObjectURL(link.href); }, 60000);
+}
+function normalizeCustomerPhone(phone) {
+  var digits = String(phone || "").replace(/\D/g, "");
+  return digits.charAt(0) === "0" ? "60" + digits.slice(1) : digits;
+}
+function exportCustomerData(kind) {
+  var buttons = [document.getElementById("export-customers"), document.getElementById("export-history")];
+  var message = document.getElementById("export-message");
+  buttons.forEach(function(button) { button.disabled = true; });
+  message.textContent = "Preparing your download…";
+  fetchAllCustomerRecords().then(function(records) {
+    var day = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kuala_Lumpur", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+    if (kind === "history") {
+      downloadCsv("bossman-booking-history-" + day + ".csv",
+        ["Type", "Customer name", "Phone", "Barber", "Date and time (MYT)", "Status", "Service", "Record ID"],
+        records.map(function(r) { return [r.source, r.customerName, "'" + (r.phone || ""), r.barberName,
+          r.eventAt ? new Date(r.eventAt).toLocaleString("en-GB", { timeZone: "Asia/Kuala_Lumpur" }) : "", r.status, r.serviceName, r.recordId]; }));
+      message.textContent = "Downloaded " + records.length + " booking records.";
+      return;
+    }
+    var byPhone = new Map();
+    records.forEach(function(r) {
+      var key = normalizeCustomerPhone(r.phone) || r.recordId;
+      var current = byPhone.get(key);
+      if (!current) {
+        byPhone.set(key, { name: r.customerName, phone: r.phone, first: r.eventAt, last: r.eventAt, records: 1, barber: r.barberName });
+      } else {
+        current.records++;
+        if (r.eventAt < current.first) current.first = r.eventAt;
+        if (r.eventAt > current.last) { current.last = r.eventAt; current.name = r.customerName; current.phone = r.phone; current.barber = r.barberName; }
+      }
+    });
+    downloadCsv("bossman-customers-" + day + ".csv",
+      ["Customer name", "Phone", "First booking (MYT)", "Latest booking (MYT)", "Records", "Latest barber"],
+      Array.from(byPhone.values()).map(function(c) { return [c.name, "'" + (c.phone || ""),
+        new Date(c.first).toLocaleString("en-GB", { timeZone: "Asia/Kuala_Lumpur" }),
+        new Date(c.last).toLocaleString("en-GB", { timeZone: "Asia/Kuala_Lumpur" }), c.records, c.barber]; }));
+    message.textContent = "Downloaded " + byPhone.size + " customers.";
+  }).catch(function(error) { message.textContent = error.message; })
+    .finally(function() { buttons.forEach(function(button) { button.disabled = false; }); });
+}
+document.getElementById("export-customers").onclick = function() { exportCustomerData("customers"); };
+document.getElementById("export-history").onclick = function() { exportCustomerData("history"); };
 WEEK_DAYS.forEach(function(day, index) {
   var label = document.createElement("label");
   var input = document.createElement("input"); input.type = "checkbox"; input.value = index; input.name = "worker-off-day";

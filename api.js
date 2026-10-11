@@ -122,6 +122,12 @@ DB.saveBarber = function(pin, worker) {
 DB.rotateBarberPin = function(pin, barberId) {
   return sbRpc("rotate_barber_pin", { p_owner_pin: pin, p_barber_id: barberId });
 };
+DB.deleteBarber = function(pin, barberId) {
+  return sbRpc("delete_barber", { p_owner_pin: pin, p_barber_id: barberId });
+};
+DB.getOwnerCustomerRecords = function(pin, offset, limit) {
+  return sbRpc("get_owner_customer_records", { p_owner_pin: pin, p_offset: offset, p_limit: limit });
+};
 
 // Public link: join the live queue remotely during shop hours.
 DB.joinQueueRemote = function(p) {
