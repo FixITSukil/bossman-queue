@@ -1,4 +1,4 @@
-const CACHE_NAME = "bossman-customer-v4";
+const CACHE_NAME = "bossman-customer-v5";
 const SHELL = [
   "book.html", "index.html", "brand.css", "api.js", "logo.png",
   "manifest.json", "icon-192.png", "icon-512.png", "apple-touch-icon.png"

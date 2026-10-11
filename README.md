@@ -2,17 +2,17 @@
 
 Give customers this public link: **https://fixitsukil.github.io/bossman-queue/book.html**.
 
-The page shows each active barber's live queue and estimated wait. Customers choose a barber, enter their name and phone, and join the live queue from anywhere. They do not choose a service or appointment time. Online joining is open from 11:00 AM through 10:45 PM Malaysia time; the database enforces these hours. After joining, customers see their place and wait on `index.html`, which refreshes automatically.
+The page shows every listed barber. Available barbers show their live queue and estimated wait; paused barbers and those on a scheduled off day remain visible but cannot be selected. Customers choose a barber, enter their name and phone, and join the live queue from anywhere. They do not choose a service or appointment time. Online joining is open from 11:00 AM through 10:45 PM Malaysia time; the database enforces these hours. After joining, customers see their place and wait on `index.html`, which refreshes automatically.
 
 The in-shop QR is permanent: `qr-display.html` shows the fixed `shop-qr.png`, which links to `index.html` and can also be printed. The in-shop page asks customers to share their location. QR joining runs from 11:00 AM through 10:45 PM Malaysia time. Outside that window, the page shows a closed message instead of barber choices, and the database rejects any attempted join. Customers already in the queue can still view their place. Both paths enter the same live queue. Staff see remote customers in their existing barber and owner dashboards. The service catalog remains available to the owner for staff reference, and previous appointments remain visible to staff.
 
 ## Deployment
 
-Apply the SQL migrations in `supabase/migrations/` in timestamp order before publishing the corresponding pages. The static QR join function is in `20261010102842_static_shop_qr.sql`. Publish the site to GitHub Pages, then test both the QR and public links. No owner or barber secret belongs in a public URL.
+For a fresh database, run `supabase/schema.sql`, then `supabase/hardening.sql`, then the SQL migrations in `supabase/migrations/` in timestamp order. For an existing database, apply only new migrations. The static QR join function is in `20261010102842_static_shop_qr.sql`. Publish the site to GitHub Pages, then test both the QR and public links. No owner or barber secret belongs in a public URL.
 
 Estimated waits use each barber's average minutes and the remaining time of any customer currently being served. They are estimates; actual service length and queue changes can affect them.
 
-Each barber can use the availability control on their private `barber.html?pin=...` dashboard to stop or resume taking new customers. Pausing removes them from the public booking and in-shop QR choices; it does not remove customers already waiting or being served. The customer pages refresh barber availability every 10 seconds. The owner dashboard continues to show inactive barbers and their queues.
+The owner uses the existing private `owner.html?pin=...` dashboard to add and edit workers, set names, roles, average service times, display order, and weekly off days, and pause or resume new joins. Off days follow Malaysia time. The owner can hide former staff from customer pages while preserving their queue history, copy each worker's private dashboard link, or reset that link to invalidate the old one. Barbers can also stop or resume new joins on their own private `barber.html?pin=...` dashboard. Pausing or a scheduled off day leaves current queues intact. Customer pages refresh availability every 10 seconds, and the database checks availability again when someone joins.
 
 Barbers can cancel a waiting or called customer separately from marking a no-show. The customer's queue page then shows an apology and links to WhatsApp or call Bossman at 011-1165 1608. The page checks for status changes every 10 seconds while open and shows the cancellation again if the customer returns to that queue page on the same device.
 

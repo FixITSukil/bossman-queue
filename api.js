@@ -25,7 +25,8 @@ function sbRpc(fn, body) {
 }
 
 function mapBarber(r) {
-  return { id: r.id, name: r.name, isActive: r.is_active, avgMinutes: r.avg_minutes, role: r.role };
+  return { id: r.id, name: r.name, isActive: r.is_active, isAvailable: r.is_available,
+    offToday: r.off_today, avgMinutes: r.avg_minutes, role: r.role };
 }
 function mapPublicEntry(r) {
   return {
@@ -37,7 +38,7 @@ function mapPublicEntry(r) {
 var DB = {
   // Public reads (no PINs, no phone numbers, no names)
   getBarbers: function() {
-    return sbSelect("barbers_public?is_active=eq.true&order=sort.asc,name.asc").then(function(a) { return (a || []).map(mapBarber); });
+    return sbSelect("barbers_public?order=sort.asc,name.asc").then(function(a) { return (a || []).map(mapBarber); });
   },
   getAllBarbers: function() {
     return sbSelect("barbers_public?order=sort.asc,name.asc").then(function(a) { return (a || []).map(mapBarber); });
@@ -110,6 +111,16 @@ DB.saveService = function(pin, service) {
     p_owner_pin: pin, p_service_id: service.id || null, p_name: service.name,
     p_duration_minutes: service.durationMinutes, p_is_active: service.isActive
   });
+};
+DB.saveBarber = function(pin, worker) {
+  return sbRpc("save_barber", {
+    p_owner_pin: pin, p_id: worker.id || null, p_name: worker.name,
+    p_role: worker.role, p_avg_minutes: worker.avgMinutes, p_sort: worker.sort,
+    p_is_active: worker.isActive, p_is_listed: worker.isListed, p_off_days: worker.offDays || []
+  });
+};
+DB.rotateBarberPin = function(pin, barberId) {
+  return sbRpc("rotate_barber_pin", { p_owner_pin: pin, p_barber_id: barberId });
 };
 
 // Public link: join the live queue remotely during shop hours.

@@ -68,6 +68,21 @@
   .service-error { color: #f2aaa5 !important; }
   .owner-booking { border-top: 1px solid var(--line); padding: 0.65rem 0; font-size: 0.82rem; }
   .owner-booking small { display: block; color: var(--cream-dim); margin-top: 0.2rem; }
+  .worker-manage-row { border-top: 1px solid var(--line); padding: 0.8rem 0; }
+  .worker-manage-row strong { color: var(--cream); }
+  .worker-manage-row small { display: block; color: var(--cream-dim); line-height: 1.4; margin: 0.25rem 0 0.5rem; }
+  .worker-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .worker-actions button, .worker-form button, #add-worker { background: var(--pine); border: 1px solid var(--fern); color: var(--cream); border-radius: 0.5rem; padding: 0.5rem 0.65rem; font: inherit; font-size: 0.78rem; cursor: pointer; }
+  .worker-actions button:first-child, .worker-form button[type=submit], #add-worker { background: var(--gold); color: var(--pine); border-color: var(--gold); }
+  .worker-form { border-top: 1px solid var(--line); margin-top: 0.8rem; padding-top: 0.8rem; }
+  .worker-form label { display: block; color: var(--cream-dim); font-size: 0.76rem; margin: 0.65rem 0 0.25rem; }
+  .worker-form input:not([type=checkbox]), .worker-form select { width: 100%; background: var(--pine); border: 1px solid var(--fern); color: var(--cream); border-radius: 0.5rem; padding: 0.55rem; font: inherit; }
+  .worker-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+  .worker-form-grid label { margin-top: 0; }
+  .worker-days { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+  .worker-days label { display: flex; align-items: center; gap: 0.3rem; margin: 0; border: 1px solid var(--fern); border-radius: 0.5rem; padding: 0.4rem 0.5rem; }
+  .worker-check { display: flex !important; align-items: center; gap: 0.45rem; color: var(--cream) !important; }
+  .worker-error { color: #f2aaa5 !important; }
 </style>
 </head>
 <body>
@@ -87,6 +102,30 @@
     <div class="sum-card"><div class="sum-val" id="sum-serving">–</div><div class="sum-label">being served</div></div>
     <div class="sum-card"><div class="sum-val" id="sum-active">–</div><div class="sum-label">barbers active</div></div>
   </div>
+
+  <section class="service-panel" id="worker-management-panel">
+    <h2>Manage barbers</h2>
+    <p>Unavailable barbers stay visible to customers. Set weekly off days in Malaysia time, or pause new joins manually. Hide a worker only when they should no longer appear on customer pages.</p>
+    <button id="add-worker" type="button" style="margin-top:0.8rem;">+ Add worker</button>
+    <p class="worker-error hidden" id="worker-error" role="alert"></p>
+    <p id="worker-message" role="status" style="color:var(--gold);font-size:0.78rem;"></p>
+    <div id="worker-management-list"><p>Loading workers…</p></div>
+    <form class="worker-form hidden" id="worker-form">
+      <h3 id="worker-form-title" style="font-family:var(--serif);">Add worker</h3>
+      <input id="worker-id" type="hidden">
+      <label for="worker-name">Name</label><input id="worker-name" maxlength="80" required>
+      <div class="worker-form-grid">
+        <label>Role<select id="worker-role"><option value="barber">Barber</option><option value="therapist">Facial therapist</option></select></label>
+        <label>Average minutes<input id="worker-average" type="number" min="5" max="240" required></label>
+        <label>Display order<input id="worker-sort" type="number" min="0" max="9999" required></label>
+      </div>
+      <label>Weekly off days</label>
+      <div class="worker-days" id="worker-days"></div>
+      <label class="worker-check"><input id="worker-active" type="checkbox" checked> Taking new customers when scheduled</label>
+      <label class="worker-check"><input id="worker-listed" type="checkbox" checked> Show on customer pages</label>
+      <div class="worker-actions" style="margin-top:0.8rem;"><button type="submit" id="save-worker">Save worker</button><button type="button" id="cancel-worker-edit">Cancel</button></div>
+    </form>
+  </section>
 
   <section class="service-panel">
     <h2>Services & average times</h2>
@@ -131,7 +170,7 @@
 
 </div>
 
-<script src="api.js?v=20261010"></script>
+<script src="api.js?v=20261011a"></script>
 <script>
 function remainingCut(serving, avg) {
   if (!serving) return 0;
@@ -150,6 +189,109 @@ function tickClock() {
 setInterval(tickClock, 1000);
 
 var OWNER_PIN = new URLSearchParams(window.location.search).get("pin") || "";
+var ownerWorkers = [];
+var WEEK_DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+function workerError(message) { var el = document.getElementById("worker-error"); el.textContent = message; el.classList.remove("hidden"); }
+function clearWorkerError() { document.getElementById("worker-error").classList.add("hidden"); }
+function workerMessage(message) { document.getElementById("worker-message").textContent = message; }
+function workerStatus(worker) {
+  if (!worker.isListed) return "Hidden from customers";
+  if (worker.offToday) return "Off today";
+  return worker.isActive ? "Taking customers" : "Paused manually";
+}
+function workerAction(label, handler) {
+  var button = document.createElement("button"); button.type = "button"; button.textContent = label; button.onclick = handler; return button;
+}
+function renderWorkerManagement() {
+  if (!document.getElementById("worker-form").classList.contains("hidden")) return;
+  var target = document.getElementById("worker-management-list"); target.textContent = "";
+  ownerWorkers.forEach(function(worker) {
+    var row = document.createElement("div"); row.className = "worker-manage-row";
+    var name = document.createElement("strong"); name.textContent = worker.name;
+    var detail = document.createElement("small");
+    var days = (worker.offDays || []).map(function(day) { return WEEK_DAYS[day]; }).filter(Boolean);
+    detail.textContent = workerStatus(worker) + " · " + (worker.role === "therapist" ? "Facial therapist" : "Barber")
+      + " · " + worker.avgMinutes + " min average · Off: " + (days.length ? days.join(", ") : "none");
+    var actions = document.createElement("div"); actions.className = "worker-actions";
+    actions.appendChild(workerAction("Edit", function() { openWorkerForm(worker); }));
+    actions.appendChild(workerAction(worker.isActive ? "Pause joins" : "Resume joins", function() {
+      clearWorkerError();
+      DB.saveBarber(OWNER_PIN, Object.assign({}, worker, { isActive: !worker.isActive })).then(function(result) {
+        if (!result || result.error) throw new Error(result && result.error || "Could not update availability.");
+        workerMessage(worker.name + (worker.isActive ? " paused." : " ready to take customers on scheduled days."));
+        loadAll();
+      }).catch(function(error) { workerError(error.message); });
+    }));
+    actions.appendChild(workerAction("Copy staff link", function() { copyWorkerLink(worker); }));
+    actions.appendChild(workerAction("Reset staff link", function() { resetWorkerLink(worker); }));
+    row.appendChild(name); row.appendChild(detail); row.appendChild(actions); target.appendChild(row);
+  });
+}
+function copyWorkerLink(worker) {
+  var link = new URL("barber.html", window.location.href); link.search = "?pin=" + encodeURIComponent(worker.pin);
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(link.href).then(function() { workerMessage("Private link copied for " + worker.name + "."); })
+      .catch(function() { prompt("Copy this private staff link", link.href); });
+  } else prompt("Copy this private staff link", link.href);
+}
+function resetWorkerLink(worker) {
+  if (!confirm("Reset " + worker.name + "'s private link? Their old link will stop working immediately.")) return;
+  clearWorkerError();
+  DB.rotateBarberPin(OWNER_PIN, worker.id).then(function(result) {
+    if (!result || result.error || !result.pin) throw new Error(result && result.error || "Could not reset link.");
+    workerMessage("Private link reset for " + worker.name + ". Copy and share the new link.");
+    loadAll();
+  }).catch(function(error) { workerError(error.message); });
+}
+WEEK_DAYS.forEach(function(day, index) {
+  var label = document.createElement("label");
+  var input = document.createElement("input"); input.type = "checkbox"; input.value = index; input.name = "worker-off-day";
+  label.appendChild(input); label.appendChild(document.createTextNode(day));
+  document.getElementById("worker-days").appendChild(label);
+});
+function openWorkerForm(worker) {
+  clearWorkerError(); workerMessage("");
+  document.getElementById("worker-form-title").textContent = worker ? "Edit " + worker.name : "Add worker";
+  document.getElementById("worker-id").value = worker ? worker.id : "";
+  document.getElementById("worker-name").value = worker ? worker.name : "";
+  document.getElementById("worker-role").value = worker ? worker.role : "barber";
+  document.getElementById("worker-average").value = worker ? worker.avgMinutes : 35;
+  document.getElementById("worker-sort").value = worker ? worker.sort : Math.min(9999, ownerWorkers.reduce(function(n, w) { return Math.max(n, w.sort || 0); }, 0) + 1);
+  document.getElementById("worker-active").checked = worker ? worker.isActive : true;
+  document.getElementById("worker-listed").checked = worker ? worker.isListed : true;
+  document.querySelectorAll('input[name="worker-off-day"]').forEach(function(input) {
+    input.checked = !!(worker && (worker.offDays || []).includes(Number(input.value)));
+  });
+  var form = document.getElementById("worker-form"); form.classList.remove("hidden"); form.scrollIntoView({ block: "nearest" });
+}
+document.getElementById("add-worker").onclick = function() { openWorkerForm(null); };
+document.getElementById("cancel-worker-edit").onclick = function() {
+  document.getElementById("worker-form").classList.add("hidden"); clearWorkerError(); renderWorkerManagement();
+};
+document.getElementById("worker-form").onsubmit = function(event) {
+  event.preventDefault(); clearWorkerError();
+  var worker = {
+    id: document.getElementById("worker-id").value || null,
+    name: document.getElementById("worker-name").value.trim(),
+    role: document.getElementById("worker-role").value,
+    avgMinutes: Number(document.getElementById("worker-average").value),
+    sort: Number(document.getElementById("worker-sort").value),
+    isActive: document.getElementById("worker-active").checked,
+    isListed: document.getElementById("worker-listed").checked,
+    offDays: Array.from(document.querySelectorAll('input[name="worker-off-day"]')).filter(function(input) { return input.checked; }).map(function(input) { return Number(input.value); })
+  };
+  if (worker.name.length < 2 || !Number.isInteger(worker.avgMinutes) || worker.avgMinutes < 5 || worker.avgMinutes > 240
+      || !Number.isInteger(worker.sort) || worker.sort < 0 || worker.sort > 9999) {
+    workerError("Enter a name, average time of 5–240 minutes, and display order of 0–9999."); return;
+  }
+  var button = document.getElementById("save-worker"); button.disabled = true; button.textContent = "Saving…";
+  DB.saveBarber(OWNER_PIN, worker).then(function(result) {
+    if (!result || result.error) throw new Error(result && result.error || "Could not save worker.");
+    document.getElementById("worker-form").classList.add("hidden");
+    workerMessage(worker.name + " saved."); loadAll();
+  }).catch(function(error) { workerError(error.message); })
+    .finally(function() { button.disabled = false; button.textContent = "Save worker"; });
+};
 var ownerBookingDate = document.getElementById("owner-booking-date");
 ownerBookingDate.value = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kuala_Lumpur", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 ownerBookingDate.onchange = loadOwnerBookings;
@@ -252,9 +394,17 @@ function loadAll() {
         + (res && res.error === "bad_pin" ? "Invalid owner PIN — check your link." : "Failed to load. Please refresh.") + "</p>";
       return;
     }
-    render(res.workers || []);
+    ownerWorkers = res.workers || [];
+    renderWorkerManagement();
+    render(ownerWorkers);
   }).catch(function() {
     document.getElementById("barbers-container").innerHTML = "<p style='text-align:center;color:#e88;padding:2rem'>Failed to load. Please refresh.</p>";
+  });
+}
+
+function escapeHtml(value) {
+  return String(value == null ? "" : value).replace(/[&<>"']/g, function(char) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char];
   });
 }
 
@@ -272,23 +422,23 @@ function render(workers) {
 
     totalWaiting += waiting.length;
     if (serving)    totalServing++;
-    if (b.isActive) totalActive++;
+    if (b.isAvailable && b.role === "barber") totalActive++;
 
-    var pillClass = !b.isActive ? "pill-inactive" : serving ? "pill-busy" : "pill-active";
-    var pillText  = !b.isActive ? "Inactive" : serving ? "Cutting" : "Active";
-    var avg = 35; // flat average wait estimate per customer
+    var pillClass = !b.isAvailable ? "pill-inactive" : serving ? "pill-busy" : "pill-active";
+    var pillText  = !b.isListed ? "Hidden" : b.offToday ? "Off today" : !b.isActive ? "Paused" : serving ? "Cutting" : "Active";
+    var avg = b.avgMinutes || 35;
     var remaining = remainingCut(serving, avg);
 
     html += '<div class="barber-card"><div class="barber-header">';
-    html +=   '<div><div class="barber-name">' + b.name + '</div>';
+    html +=   '<div><div class="barber-name">' + escapeHtml(b.name) + '</div>';
     var lastWait = waiting.length === 0 ? 0 : (serving ? remaining : 0) + (waiting.length - 1) * avg;
     html +=   '<div class="barber-meta">' + waiting.length + ' waiting · ~' + lastWait + ' min total</div></div>';
     html +=   '<span class="status-pill ' + pillClass + '">' + pillText + '</span></div>';
 
     if (serving) {
       html += '<div class="serving-row"><span class="serving-label">Now</span>';
-      html +=   '<div><div class="serving-name">' + serving.customerName + '</div>';
-      html +=   '<div class="serving-phone">' + serving.phone + '</div></div></div>';
+      html +=   '<div><div class="serving-name">' + escapeHtml(serving.customerName) + '</div>';
+      html +=   '<div class="serving-phone">' + escapeHtml(serving.phone) + '</div></div></div>';
     }
 
     html += '<div class="queue-rows">';
@@ -298,8 +448,8 @@ function render(workers) {
       waiting.forEach(function(entry, i) {
         var waitMins = (serving ? remaining : 0) + i * avg;
         html += '<div class="queue-row"><div class="q-num">' + (i + 1) + '</div>';
-        html +=   '<div><div class="q-name">' + entry.customerName + '</div>';
-        html +=   '<div class="q-phone">' + entry.phone + '</div></div>';
+        html +=   '<div><div class="q-name">' + escapeHtml(entry.customerName) + '</div>';
+        html +=   '<div class="q-phone">' + escapeHtml(entry.phone) + '</div></div>';
         html +=   '<div class="q-wait">~' + waitMins + ' min</div></div>';
       });
     }
@@ -323,7 +473,7 @@ function loadStats() {
     document.getElementById("eod-served").textContent = s.totalServed;
     document.getElementById("eod-joined").textContent = s.totalJoined;
     var w = (s.perWorker || []).map(function(p) {
-      return "<span><b>" + p.name + "</b> — " + p.served + " served</span>";
+      return "<span><b>" + escapeHtml(p.name) + "</b> — " + Number(p.served || 0) + " served</span>";
     }).join("");
     document.getElementById("eod-workers").innerHTML = w;
   }).catch(function() {});
