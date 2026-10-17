@@ -174,7 +174,7 @@
 
 </div>
 
-<script src="api.js?v=20261011a"></script>
+<script src="api.js?v=20261017c"></script>
 <script>
 var PIN    = new URLSearchParams(window.location.search).get("pin") || "";
 var barber = null;
@@ -191,14 +191,6 @@ var bookingDate = document.getElementById("booking-date");
 bookingDate.value = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kuala_Lumpur", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 bookingDate.onchange = loadBookings;
 
-function remainingCut(serving, avg) {
-  if (!serving) return 0;
-  var duration = serving.durationMinutes || avg;
-  if (!serving.calledAt) return duration;
-  var elapsedMin = (Date.now() - new Date(serving.calledAt).getTime()) / 60000;
-  return Math.max(0, Math.round(duration - elapsedMin));
-}
-
 function tickClock() {
   var el = document.getElementById("clock");
   if (!el) return;
@@ -214,7 +206,7 @@ function init() {
       return;
     }
     barber = b;
-    barber.avgMinutes = 35; // flat average wait estimate per customer
+    barber.avgMinutes = bossmanAverageMinutes(b.avgMinutes);
     document.getElementById("barber-name").textContent = b.name;
     updateToggleBtn();
     loadQueue();
@@ -298,19 +290,16 @@ function loadBookings() {
 function renderQueue(queue) {
   queue = queue || [];
   latestQueue = queue;
-  var waiting = queue.filter(function(q) { return q.status === "waiting"; });
-  nextDuration = waiting.length && waiting[0].durationMinutes > 0 ? waiting[0].durationMinutes : 35;
-  var serving  = queue.find(function(q)  { return q.status === "called"; });
+  var timing = bossmanQueueTiming(queue, barber ? barber.avgMinutes : 35);
+  var waiting = timing.waiting;
+  nextDuration = waiting.length && waiting[0].durationMinutes > 0 ? waiting[0].durationMinutes : timing.avgMinutes;
+  var serving  = timing.serving;
   if (pendingCall && serving && serving.id === pendingCall.entryId) pendingCall = null;
   if (pendingComplete && (!serving || serving.id !== pendingComplete.entryId)) pendingComplete = null;
   syncQueueButtons();
 
-  var avg = barber ? barber.avgMinutes || 30 : 30;
-  var remaining = remainingCut(serving, avg);
-  // Wait for the last person in line (time until the queue clears)
-  var lastWait = waiting.length === 0 ? 0 : (serving ? remaining : 0) + (waiting.length - 1) * avg;
-  document.getElementById("stat-waiting").textContent = waiting.length;
-  document.getElementById("stat-wait").textContent = "~" + lastWait + "m";
+  document.getElementById("stat-waiting").textContent = timing.waitingCount;
+  document.getElementById("stat-wait").textContent = "~" + timing.queueMinutes + "m";
 
   var servingSection = document.getElementById("serving-section");
   if (serving) {
@@ -336,7 +325,7 @@ function renderQueue(queue) {
   }
   list.innerHTML = "";
   waiting.forEach(function(entry, i) {
-    var waitMins = (serving ? remaining : 0) + i * avg;
+    var waitMins = bossmanWaitForEntry(entry.id, queue, timing.avgMinutes);
     var item = document.createElement("div");
     item.className = "queue-item";
     var left = document.createElement("div"); left.className = "queue-left";
