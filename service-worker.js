@@ -1,7 +1,7 @@
-const CACHE_NAME = "bossman-customer-v9";
+const CACHE_NAME = "bossman-customer-v10";
 const SHELL = [
   "book.html", "index.html", "brand.css", "api.js", "logo.png",
-  "recovery-loader.js", "recovery.js",
+  "recovery-loader.js", "recovery.js", "turn-alerts.js",
   "manifest.json", "icon-192.png", "icon-512.png", "apple-touch-icon.png"
 ];
 const shellPaths = new Set(SHELL.map(path => new URL(path, self.registration.scope).pathname));
@@ -30,4 +30,49 @@ self.addEventListener("fetch", event => {
     }
     return response;
   }).catch(() => caches.match(cacheKey)));
+});
+
+self.addEventListener("push", event => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch (error) {
+    data = { body: event.data ? event.data.text() : "Your barber is ready." };
+  }
+
+  const title = data.title || "It's your turn at Bossman";
+  const options = {
+    body: data.body || "Please return now. Your barber is ready for you.",
+    icon: "icon-192.png",
+    badge: "icon-192.png",
+    tag: data.tag || "bossman-turn-alert",
+    renotify: true,
+    requireInteraction: true,
+    vibrate: [350, 150, 350, 150, 700],
+    data: { url: data.url || "./index.html" }
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener("notificationclick", event => {
+  event.notification.close();
+  const destination = new URL(
+    event.notification.data && event.notification.data.url
+      ? event.notification.data.url
+      : "./index.html",
+    self.registration.scope
+  ).href;
+
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then(windowClients => {
+      for (const client of windowClients) {
+        if (client.url.startsWith(self.registration.scope) && "focus" in client) {
+          if ("navigate" in client) client.navigate(destination);
+          return client.focus();
+        }
+      }
+      return clients.openWindow ? clients.openWindow(destination) : undefined;
+    })
+  );
 });
