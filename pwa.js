@@ -14,6 +14,15 @@
     document.body.appendChild(script);
   });
 
+  // Turn alerts are available after the customer joins a live queue.
+  window.addEventListener("load", function() {
+    if (document.getElementById("bossman-turn-alerts")) return;
+    var script = document.createElement("script");
+    script.id = "bossman-turn-alerts";
+    script.src = "turn-alerts.js?v=20261017a";
+    document.body.appendChild(script);
+  });
+
   var card = document.getElementById("install-card");
   var button = document.getElementById("install-button");
   if (!card) return;
