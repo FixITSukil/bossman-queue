@@ -10,7 +10,7 @@
     if (document.getElementById("bossman-recovery-loader")) return;
     var script = document.createElement("script");
     script.id = "bossman-recovery-loader";
-    script.src = "recovery-loader.js?v=20261017a";
+    script.src = "recovery-loader.js?v=20261017b";
     document.body.appendChild(script);
   });
 
@@ -53,6 +53,6 @@
       promptEvent = null;
       button.classList.add("hidden");
     });
-  });
+  }
   window.addEventListener("appinstalled", function() { card.classList.add("hidden"); });
 })();
