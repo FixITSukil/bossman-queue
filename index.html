@@ -172,7 +172,7 @@
   </details>
 </section>
 
-<script src="api.js?v=20261017c"></script>
+<script src="api.js?v=20261017d"></script>
 <script src="pwa.js?v=20261010d"></script>
 <script>
 var barbers = [];
@@ -600,15 +600,22 @@ function refreshPosition() {
     document.getElementById("btn-leave").classList.remove("hidden");
     document.getElementById("conf-refresh").textContent = "Updates automatically every 10 seconds";
 
-    call({ action: "getQueue", barberId: myBarberId }).then(function(queue) {
+    Promise.all([
+      call({ action: "getQueue", barberId: myBarberId }),
+      call({ action: "getBarbers" })
+    ]).then(function(results) {
+      var queue = results[0] || [];
+      var workers = Array.isArray(results[1]) ? results[1] : [];
+      var latestBarber = workers.find(function(b) { return b.id === myBarberId; });
+      if (latestBarber) selectedBarber = latestBarber;
       var avg = selectedBarber ? selectedBarber.avgMinutes || AVG : AVG;
-      var timing = bossmanQueueTiming(queue || [], avg);
+      var timing = bossmanQueueTiming(queue, avg);
       var pos = -1;
       for (var i = 0; i < timing.waiting.length; i++) {
         if (timing.waiting[i].id === myEntryId) { pos = i; break; }
       }
       if (pos < 0) return;
-      var waitMins = bossmanWaitForEntry(myEntryId, queue || [], avg);
+      var waitMins = bossmanWaitForEntry(myEntryId, queue, avg);
       document.getElementById("conf-ahead").textContent = pos;
       document.getElementById("conf-wait").textContent  = "~" + waitMins + "m";
       document.getElementById("conf-pos").textContent = "#" + (pos + 1);
