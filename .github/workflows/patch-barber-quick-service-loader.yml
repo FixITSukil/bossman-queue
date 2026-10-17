@@ -2,7 +2,8 @@ name: Enable barber quick-service UI
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
     paths:
       - .github/workflows/patch-barber-quick-service-loader.yml
 
@@ -17,8 +18,8 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Append quick-service loader to api.js
-        shell: python
         run: |
+          python3 - <<'PY'
           from pathlib import Path
 
           path = Path("api.js")
@@ -44,6 +45,7 @@ jobs:
 })();
 '''
               path.write_text(text, encoding="utf-8")
+          PY
 
       - name: Commit loader
         run: |
