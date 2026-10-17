@@ -1,6 +1,6 @@
-const CACHE_NAME = "bossman-customer-v10";
+const CACHE_NAME = "bossman-customer-v11";
 const SHELL = [
-  "book.html", "index.html", "brand.css", "api.js", "logo.png",
+  "book.html", "index.html", "brand.css", "api.js", "pwa.js", "logo.png",
   "recovery-loader.js", "recovery.js", "turn-alerts.js",
   "manifest.json", "icon-192.png", "icon-512.png", "apple-touch-icon.png"
 ];
@@ -68,7 +68,9 @@ self.addEventListener("notificationclick", event => {
     clients.matchAll({ type: "window", includeUncontrolled: true }).then(windowClients => {
       for (const client of windowClients) {
         if (client.url.startsWith(self.registration.scope) && "focus" in client) {
-          if ("navigate" in client) client.navigate(destination);
+          if ("navigate" in client) {
+            return client.navigate(destination).then(() => client.focus());
+          }
           return client.focus();
         }
       }
