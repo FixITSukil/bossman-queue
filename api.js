@@ -282,3 +282,18 @@ function call(params) {
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", setup);
   else setup();
 })();
+
+// Barber-only quick-service insertion UI loader.
+(function loadBossmanQuickServiceUi() {
+  function load() {
+    if (!document.getElementById("barber-name")) return;
+    if (document.getElementById("bossman-quick-service-loader")) return;
+    var script = document.createElement("script");
+    script.id = "bossman-quick-service-loader";
+    script.src = "barber-quick-service.js?v=20261017b";
+    document.body.appendChild(script);
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", load);
+  else load();
+})();
