@@ -154,7 +154,8 @@
       </div>
     </div>
     <div class="self-cancel-box hidden" id="self-cancel-box">
-      <p>Your place has been released.</p>
+      <p>Your place has been released. You can register again immediately.</p>
+      <button class="btn-gold btn-full" type="button" onclick="startNewBooking()" style="margin-top:0.9rem;">Book Again</button>
     </div>
     <button class="btn-back cancel-booking-btn" id="btn-leave" onclick="leaveQueue()" style="margin-top:1.25rem;display:block;width:100%;color:var(--cream-dim);">Cancel my booking</button>
   </div>
@@ -240,10 +241,12 @@ var STORE_KEY = "bossman_queue";
 function saveEntry(barber) {
   localStorage.setItem(STORE_KEY, JSON.stringify({ entryId: myEntryId, cancelToken: myCancelToken, id: barber.id, name: barber.name, avgMinutes: barber.avgMinutes || AVG, facialEntryId: myFacialEntryId, facialCancelToken: myFacialCancelToken, facialBarberId: myFacialBarberId }));
 }
-function clearEntry() { localStorage.removeItem(STORE_KEY); }
+function clearEntry() {
+  localStorage.removeItem(STORE_KEY);
+  localStorage.removeItem("bossman_last_join"); // legacy lock cleanup
+}
 function releaseCompletedEntry() {
   clearEntry();
-  localStorage.removeItem(LAST_JOIN_KEY);
 }
 
 // On load, if the customer already joined earlier, jump back to their status
@@ -392,9 +395,6 @@ function renderBarbers() {
   }
 }
 
-var THROTTLE_MIN = 30; // prevent rapid repeat joins until a service is completed
-var LAST_JOIN_KEY = "bossman_last_join";
-
 // ── Geofencing ── Bossman, Taipan Business Centre, USJ 10/1, Subang Jaya ──
 var GEOFENCE_ENABLED = false;
 var SHOP_LAT = 3.04772;
@@ -434,15 +434,6 @@ function joinQueue() {
   var errEl = document.getElementById("form-error");
   if (!name || !phone) { errEl.textContent = "Please enter your name and phone number."; errEl.classList.remove("hidden"); return; }
 
-  // Device throttle: block re-joining within 30 minutes of the last join
-  var last = parseInt(localStorage.getItem(LAST_JOIN_KEY) || "0");
-  var minsSince = (Date.now() - last) / 60000;
-  if (last && minsSince < THROTTLE_MIN) {
-    var wait = Math.ceil(THROTTLE_MIN - minsSince);
-    errEl.textContent = "This device already joined recently. Please wait " + wait + " more minute" + (wait === 1 ? "" : "s") + ", or see our staff.";
-    errEl.classList.remove("hidden");
-    return;
-  }
   errEl.classList.add("hidden");
 
   // Geofence gate, then submit
@@ -463,7 +454,6 @@ function doJoin(name, phone, errEl) {
       myEntryId  = res.id;
       myCancelToken = res.cancelToken;
       myBarberId = selectedBarber.id;
-      localStorage.setItem(LAST_JOIN_KEY, Date.now()); // start the 30-min device lock
 
       // Parallel facial booking → drop the customer into Jassy's queue immediately
       var wantsFacial = !document.getElementById("facial-row").classList.contains("hidden")
@@ -552,7 +542,7 @@ function showQueueEnded() {
 
 function showBarberCancelled() {
   if (refreshInterval) clearInterval(refreshInterval);
-  localStorage.removeItem(LAST_JOIN_KEY);
+  localStorage.removeItem("bossman_last_join");
   document.getElementById("conf-icon").textContent = "💬";
   document.getElementById("conf-title").textContent = "Sorry, your queue entry was cancelled";
   document.getElementById("conf-badge").classList.add("hidden");
@@ -566,6 +556,7 @@ function showBarberCancelled() {
 
 function showCustomerCancelled() {
   if (refreshInterval) clearInterval(refreshInterval);
+  clearEntry();
   document.getElementById("conf-icon").textContent = "👋";
   document.getElementById("conf-title").textContent = "Your booking is cancelled";
   document.getElementById("conf-badge").classList.add("hidden");
@@ -627,6 +618,11 @@ function refreshPosition() {
       document.getElementById("conf-pos").textContent = "#" + pos;
     });
   }).catch(function() {});
+}
+
+function startNewBooking() {
+  clearEntry();
+  location.reload();
 }
 
 function leaveQueue() {
