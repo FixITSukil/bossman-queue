@@ -35,6 +35,60 @@ function mapPublicEntry(r) {
   };
 }
 
+/*
+ * One shared queue timing model for every Bossman screen.
+ *
+ * Queue time = minutes remaining on the service in progress
+ *            + average service minutes for everyone still waiting.
+ *
+ * A waiting customer's ETA = current-service remaining
+ *                          + average minutes for each waiting customer ahead.
+ */
+function bossmanAverageMinutes(value) {
+  var n = parseInt(value, 10);
+  return n > 0 ? n : 35;
+}
+
+function bossmanRemainingServiceMinutes(serving, avgMinutes, nowMs) {
+  if (!serving) return 0;
+  var avg = bossmanAverageMinutes(avgMinutes);
+  var duration = parseInt(serving.durationMinutes, 10);
+  if (!(duration > 0)) duration = avg;
+  if (!serving.calledAt) return duration;
+  var started = new Date(serving.calledAt).getTime();
+  if (!isFinite(started)) return duration;
+  var elapsed = Math.max(0, ((typeof nowMs === "number" ? nowMs : Date.now()) - started) / 60000);
+  return Math.max(0, Math.ceil(duration - elapsed));
+}
+
+function bossmanQueueTiming(queue, avgMinutes, nowMs) {
+  queue = Array.isArray(queue) ? queue : [];
+  var avg = bossmanAverageMinutes(avgMinutes);
+  var waiting = queue.filter(function(entry) { return entry.status === "waiting"; });
+  waiting.sort(function(a, b) { return (Number(a.position) || 0) - (Number(b.position) || 0); });
+  var serving = queue.find(function(entry) { return entry.status === "called"; }) || null;
+  var remaining = bossmanRemainingServiceMinutes(serving, avg, nowMs);
+  return {
+    avgMinutes: avg,
+    waiting: waiting,
+    serving: serving,
+    waitingCount: waiting.length,
+    remainingServiceMinutes: remaining,
+    queueMinutes: remaining + (waiting.length * avg)
+  };
+}
+
+function bossmanWaitForEntry(entryId, queue, avgMinutes, nowMs) {
+  var timing = bossmanQueueTiming(queue, avgMinutes, nowMs);
+  for (var i = 0; i < timing.waiting.length; i++) {
+    if (timing.waiting[i].id === entryId) {
+      return timing.remainingServiceMinutes + (i * timing.avgMinutes);
+    }
+  }
+  if (timing.serving && timing.serving.id === entryId) return 0;
+  return null;
+}
+
 var DB = {
   // Public reads (no PINs, no phone numbers, no names)
   getBarbers: function() {
