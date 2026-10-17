@@ -172,7 +172,7 @@
   </details>
 </section>
 
-<script src="api.js?v=20261011a"></script>
+<script src="api.js?v=20261017c"></script>
 <script src="pwa.js?v=20261010d"></script>
 <script>
 var barbers = [];
@@ -189,16 +189,7 @@ var myFacialBarberId = null;
 var GOOGLE_REVIEW_URL = "https://search.google.com/local/writereview?placeid=ChIJPT94lF1NzDERlmV38by1p9Y";
 document.getElementById("review-link").href = GOOGLE_REVIEW_URL;
 
-// Minutes left on the current cut, counting down with real elapsed time
-function remainingCut(serving, avg) {
-  if (!serving) return 0;
-  var duration = serving.durationMinutes || avg;
-  if (!serving.calledAt) return duration;
-  var elapsedMin = (Date.now() - new Date(serving.calledAt).getTime()) / 60000;
-  return Math.max(0, Math.round(duration - elapsedMin));
-}
-
-// Live Malaysia clock (updates both the top bar and confirmation screen)
+// Queue timing is calculated by the shared helpers in api.js so every screen stays aligned.
 function tickClock() {
   var t = new Date().toLocaleTimeString("en-GB", { timeZone: "Asia/Kuala_Lumpur", hour: "2-digit", minute: "2-digit", second: "2-digit" });
   var label = "🕐 " + t + " MYT";
@@ -300,12 +291,13 @@ function syncCancelButton() {
 function showForm(barber) {
   if (!joiningOpen() || !barber.isAvailable) { updateHoursUI(); return; }
   selectedBarber = barber;
-  var count = queueCounts[barber.id] || 0;
+  var timing = queueCounts[barber.id] || bossmanQueueTiming([], barber.avgMinutes || AVG);
+  var count = timing.waitingCount;
   var therapist = isTherapist(barber);
   document.getElementById("form-title").textContent = "Join " + barber.name + "'s queue";
   document.getElementById("form-meta").textContent = therapist
     ? (count + " waiting · facial treatments")
-    : (count + " waiting · ~" + (count * (barber.avgMinutes || AVG)) + " min");
+    : (count + " waiting · ~" + timing.queueMinutes + " min queue");
   // Facial add-on checkbox only for barbers, and only if a therapist is available
   var facialRow = document.getElementById("facial-row");
   if (!therapist && facialTherapist) facialRow.classList.remove("hidden");
@@ -337,8 +329,10 @@ function loadBarbers() {
     }
     return Promise.all(barbers.map(function(b) {
       return call({ action: "getQueue", barberId: b.id }).then(function(q) {
-        queueCounts[b.id] = (q || []).length;
-      }).catch(function() {});
+        queueCounts[b.id] = bossmanQueueTiming(q || [], b.avgMinutes || AVG);
+      }).catch(function() {
+        queueCounts[b.id] = bossmanQueueTiming([], b.avgMinutes || AVG);
+      });
     })).then(renderBarbers);
   }).catch(function() {
     document.getElementById("barber-list").innerHTML = "<p style='color:#e88;text-align:center'>Failed to load. Please refresh.</p>";
@@ -354,13 +348,14 @@ function isTherapist(b) {
 }
 
 function makeCard(b, therapist) {
-  var count = queueCounts[b.id] || 0;
+  var timing = queueCounts[b.id] || bossmanQueueTiming([], b.avgMinutes || AVG);
+  var count = timing.waitingCount;
   var btn = document.createElement("button");
   btn.className = "card";
   btn.disabled = !b.isAvailable;
   var meta = !b.isAvailable ? (b.offToday ? "Off today" : "Not taking customers") : therapist
     ? (count + " waiting · facial treatments")
-    : (count + " waiting · ~" + (count * (b.avgMinutes || AVG)) + " min");
+    : (count + " waiting · ~" + timing.queueMinutes + " min queue");
   var details = document.createElement("div");
   var title = document.createElement("div"); title.className = "card-name"; title.textContent = b.name;
   if (therapist) { var tag = document.createElement("span"); tag.className = "role-tag"; tag.textContent = "Facial Therapist"; title.appendChild(tag); }
@@ -476,7 +471,7 @@ function doJoin(name, phone, errEl) {
       document.getElementById("conf-barber").textContent = selectedBarber.name;
       document.getElementById("conf-pos").textContent    = "#" + res.position;
       document.getElementById("conf-ahead").textContent  = res.ahead;
-      document.getElementById("conf-wait").textContent   = "~" + (res.ahead * AVG) + "m";
+      document.getElementById("conf-wait").textContent   = "Updating…";
       document.getElementById("step-form").classList.add("hidden");
       document.getElementById("step-done").classList.remove("hidden");
       tickClock();
@@ -606,16 +601,17 @@ function refreshPosition() {
     document.getElementById("conf-refresh").textContent = "Updates automatically every 10 seconds";
 
     call({ action: "getQueue", barberId: myBarberId }).then(function(queue) {
-      var entry = (queue || []).find(function(e) { return e.id === myEntryId; });
-      if (!entry) return;
-      var avg = selectedBarber ? selectedBarber.avgMinutes || 30 : 30;
-      var ahead = (queue || []).filter(function(e) { return e.status === "waiting" && e.position < entry.position; }).length;
-      var called = (queue || []).find(function(e) { return e.status === "called"; });
-      var waitMins = remainingCut(called, avg) + ahead * avg;
-      document.getElementById("conf-ahead").textContent = ahead;
+      var avg = selectedBarber ? selectedBarber.avgMinutes || AVG : AVG;
+      var timing = bossmanQueueTiming(queue || [], avg);
+      var pos = -1;
+      for (var i = 0; i < timing.waiting.length; i++) {
+        if (timing.waiting[i].id === myEntryId) { pos = i; break; }
+      }
+      if (pos < 0) return;
+      var waitMins = bossmanWaitForEntry(myEntryId, queue || [], avg);
+      document.getElementById("conf-ahead").textContent = pos;
       document.getElementById("conf-wait").textContent  = "~" + waitMins + "m";
-      var pos = (queue || []).filter(function(e) { return e.status === "waiting" && e.position <= entry.position; }).length;
-      document.getElementById("conf-pos").textContent = "#" + pos;
+      document.getElementById("conf-pos").textContent = "#" + (pos + 1);
     });
   }).catch(function() {});
 }
