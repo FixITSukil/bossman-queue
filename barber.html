@@ -103,7 +103,7 @@
       </div>
       <div class="stat gray">
         <div class="stat-val" id="stat-wait">~0m</div>
-        <div class="stat-label">total wait</div>
+        <div class="stat-label">queue time</div>
       </div>
     </div>
   </div>
@@ -174,7 +174,7 @@
 
 </div>
 
-<script src="api.js?v=20261017c"></script>
+<script src="api.js?v=20261017d"></script>
 <script>
 var PIN    = new URLSearchParams(window.location.search).get("pin") || "";
 var barber = null;
@@ -213,7 +213,7 @@ function init() {
     loadBookings();
     setInterval(loadQueue, 10000);
     setInterval(loadBookings, 30000);
-    setInterval(refreshAvailability, 30000);
+    setInterval(refreshAvailability, 10000);
   }).catch(function() {
     document.querySelector(".page").innerHTML = "<div class='card'><p style='color:#e88'>Failed to load. Please refresh.</p></div>";
   });
@@ -496,7 +496,9 @@ function refreshAvailability() {
       barber.isAvailable = latest.isAvailable;
       barber.offToday = latest.offToday;
       barber.isListed = latest.isListed;
+      barber.avgMinutes = bossmanAverageMinutes(latest.avgMinutes);
       updateToggleBtn();
+      if (latestQueue.length) renderQueue(latestQueue);
     }
   }).catch(function() {});
 }
