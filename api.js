@@ -68,22 +68,29 @@ function bossmanQueueTiming(queue, avgMinutes, nowMs) {
   waiting.sort(function(a, b) { return (Number(a.position) || 0) - (Number(b.position) || 0); });
   var serving = queue.find(function(entry) { return entry.status === "called"; }) || null;
   var remaining = bossmanRemainingServiceMinutes(serving, avg, nowMs);
+  var waitingMinutes = 0;
+  for (var i = 0; i < waiting.length; i++) {
+    var planned = parseInt(waiting[i].durationMinutes, 10);
+    waitingMinutes += planned > 0 ? planned : avg;
+  }
   return {
     avgMinutes: avg,
     waiting: waiting,
     serving: serving,
     waitingCount: waiting.length,
     remainingServiceMinutes: remaining,
-    queueMinutes: remaining + (waiting.length * avg)
+    waitingServiceMinutes: waitingMinutes,
+    queueMinutes: remaining + waitingMinutes
   };
 }
 
 function bossmanWaitForEntry(entryId, queue, avgMinutes, nowMs) {
   var timing = bossmanQueueTiming(queue, avgMinutes, nowMs);
+  var wait = timing.remainingServiceMinutes;
   for (var i = 0; i < timing.waiting.length; i++) {
-    if (timing.waiting[i].id === entryId) {
-      return timing.remainingServiceMinutes + (i * timing.avgMinutes);
-    }
+    if (timing.waiting[i].id === entryId) return wait;
+    var planned = parseInt(timing.waiting[i].durationMinutes, 10);
+    wait += planned > 0 ? planned : timing.avgMinutes;
   }
   if (timing.serving && timing.serving.id === entryId) return 0;
   return null;
