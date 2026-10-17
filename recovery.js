@@ -7,6 +7,7 @@
     style.id = "bossman-recovery-styles";
     style.textContent =
       ".recovery-trigger{width:100%;margin-top:1rem;padding:.85rem;border:1px solid var(--gold);border-radius:.65rem;background:var(--moss);color:var(--gold-bright);font:inherit;font-weight:700;cursor:pointer}" +
+      ".recovery-trigger.form-trigger{background:var(--pine)}" +
       ".recovery-help{margin-top:.45rem;color:var(--cream-dim);font-size:.75rem;line-height:1.45;text-align:center}" +
       ".recovery-overlay{position:fixed;inset:0;z-index:250;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:1.25rem}" +
       ".recovery-overlay.recovery-hidden{display:none!important}" +
@@ -25,25 +26,47 @@
     document.head.appendChild(style);
   }
 
+  function makeTrigger(id, label, extraClass) {
+    var button = document.createElement("button");
+    button.type = "button";
+    button.id = id;
+    button.className = "recovery-trigger" + (extraClass ? " " + extraClass : "");
+    button.textContent = label;
+    return button;
+  }
+
+  function makeHelp(text) {
+    var help = document.createElement("p");
+    help.className = "recovery-help";
+    help.textContent = text;
+    return help;
+  }
+
   function createInterface() {
     var pick = document.getElementById("step-pick");
     var barberList = document.getElementById("barber-list");
-    if (!pick || !barberList || document.getElementById("recover-queue-button")) return;
+    var joinButton = document.getElementById("btn-join");
+    if (!pick || !barberList || !joinButton) return;
+    if (document.getElementById("queue-recovery-overlay")) return;
 
     addStyles();
 
-    var trigger = document.createElement("button");
-    trigger.type = "button";
-    trigger.id = "recover-queue-button";
-    trigger.className = "recovery-trigger";
-    trigger.textContent = "Already joined? Find my queue";
+    var pickTrigger = makeTrigger(
+      "recover-queue-button",
+      "Already joined? Find my queue"
+    );
+    var pickHelp = makeHelp("Use the same name and phone number entered when joining.");
+    barberList.insertAdjacentElement("afterend", pickTrigger);
+    pickTrigger.insertAdjacentElement("afterend", pickHelp);
 
-    var help = document.createElement("p");
-    help.className = "recovery-help";
-    help.textContent = "Use the same name and phone number entered when joining.";
-
-    barberList.insertAdjacentElement("afterend", trigger);
-    trigger.insertAdjacentElement("afterend", help);
+    var formTrigger = makeTrigger(
+      "recover-queue-button-form",
+      "Already in queue? Get my queue back",
+      "form-trigger"
+    );
+    var formHelp = makeHelp("Closed the previous tab? Reopen your live queue without registering again.");
+    joinButton.insertAdjacentElement("afterend", formTrigger);
+    formTrigger.insertAdjacentElement("afterend", formHelp);
 
     var overlay = document.createElement("div");
     overlay.id = "queue-recovery-overlay";
@@ -51,7 +74,7 @@
     overlay.innerHTML =
       '<div class="recovery-dialog" role="dialog" aria-modal="true" aria-labelledby="queue-recovery-title">' +
         '<h2 id="queue-recovery-title">Find My Queue</h2>' +
-        '<p>If your original queue page was closed, enter the exact same details used when you registered.</p>' +
+        '<p>If your original queue page was closed, enter the exact same name and phone number used when you registered.</p>' +
         '<form id="queue-recovery-form">' +
           '<label for="queue-recovery-name">Your name</label>' +
           '<input id="queue-recovery-name" name="name" type="text" autocomplete="name" maxlength="80" required>' +
@@ -73,10 +96,20 @@
     var nameInput = document.getElementById("queue-recovery-name");
     var phoneInput = document.getElementById("queue-recovery-phone");
 
-    function openRecovery() {
+    function openRecovery(prefillName, prefillPhone) {
       error.textContent = "";
+      if (typeof prefillName === "string" && prefillName.trim()) {
+        nameInput.value = prefillName.trim();
+      }
+      if (typeof prefillPhone === "string" && prefillPhone.trim()) {
+        phoneInput.value = prefillPhone.trim();
+      }
       overlay.classList.remove("recovery-hidden");
-      setTimeout(function() { nameInput.focus(); }, 50);
+      setTimeout(function() {
+        if (!nameInput.value) nameInput.focus();
+        else if (!phoneInput.value) phoneInput.focus();
+        else submit.focus();
+      }, 50);
     }
 
     function closeRecovery() {
@@ -86,7 +119,9 @@
 
     function restoreQueue(entries) {
       var primary = entries.find(function(entry) { return entry.role !== "therapist"; }) || entries[0];
-      var facial = entries.find(function(entry) { return entry.role === "therapist" && entry.id !== primary.id; }) || null;
+      var facial = entries.find(function(entry) {
+        return entry.role === "therapist" && entry.id !== primary.id;
+      }) || null;
 
       selectedBarber = {
         id: primary.barberId,
@@ -102,24 +137,41 @@
 
       saveEntry(selectedBarber);
       syncCancelButton();
-      document.getElementById("conf-barber").textContent = primary.barberName + (facial ? " + " + facial.barberName : "");
+      document.getElementById("conf-barber").textContent =
+        primary.barberName + (facial ? " + " + facial.barberName : "");
       document.getElementById("step-pick").classList.add("hidden");
       document.getElementById("step-form").classList.add("hidden");
       document.getElementById("step-done").classList.remove("hidden");
+      var formError = document.getElementById("form-error");
+      if (formError) formError.classList.add("hidden");
       overlay.classList.add("recovery-hidden");
       tickClock();
       refreshPosition();
       if (refreshInterval) clearInterval(refreshInterval);
       refreshInterval = setInterval(refreshPosition, 10000);
+      window.dispatchEvent(new CustomEvent("bossman:queue-restored", {
+        detail: { entryId: primary.id, barberId: primary.barberId }
+      }));
     }
 
-    trigger.addEventListener("click", openRecovery);
+    window.openBossmanQueueRecovery = openRecovery;
+
+    pickTrigger.addEventListener("click", function() {
+      openRecovery("", "");
+    });
+    formTrigger.addEventListener("click", function() {
+      var currentName = document.getElementById("inp-name");
+      var currentPhone = document.getElementById("inp-phone");
+      openRecovery(currentName ? currentName.value : "", currentPhone ? currentPhone.value : "");
+    });
     back.addEventListener("click", closeRecovery);
     overlay.addEventListener("click", function(event) {
       if (event.target === overlay) closeRecovery();
     });
     document.addEventListener("keydown", function(event) {
-      if (event.key === "Escape" && !overlay.classList.contains("recovery-hidden")) closeRecovery();
+      if (event.key === "Escape" && !overlay.classList.contains("recovery-hidden")) {
+        closeRecovery();
+      }
     });
 
     form.addEventListener("submit", function(event) {
@@ -141,11 +193,16 @@
         p_phone: phone
       }).then(function(result) {
         if (!result || result.error || !Array.isArray(result.entries) || !result.entries.length) {
-          throw new Error(result && result.error || "No active queue was found with those details.");
+          throw new Error(
+            result && result.error ||
+            "No active queue was found with those details."
+          );
         }
         restoreQueue(result.entries);
       }).catch(function(err) {
-        error.textContent = err && err.message ? err.message : "Could not find the queue. Please try again.";
+        error.textContent = err && err.message
+          ? err.message
+          : "Could not find the queue. Please try again.";
       }).finally(function() {
         submit.disabled = false;
         back.disabled = false;
