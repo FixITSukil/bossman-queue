@@ -23,6 +23,15 @@
     document.body.appendChild(script);
   });
 
+  // Waiting customers can compare live queues and securely change barber.
+  window.addEventListener("load", function() {
+    if (document.getElementById("bossman-switch-barber")) return;
+    var script = document.createElement("script");
+    script.id = "bossman-switch-barber";
+    script.src = "switch-barber.js?v=20261017a";
+    document.body.appendChild(script);
+  });
+
   var card = document.getElementById("install-card");
   var button = document.getElementById("install-button");
   if (!card) return;
@@ -44,6 +53,6 @@
       promptEvent = null;
       button.classList.add("hidden");
     });
-  }
+  });
   window.addEventListener("appinstalled", function() { card.classList.add("hidden"); });
 })();
