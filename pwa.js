@@ -5,6 +5,15 @@
     });
   }
 
+  // Recovery is loaded only after its Supabase RPC has been deployed.
+  window.addEventListener("load", function() {
+    if (document.getElementById("bossman-recovery-loader")) return;
+    var script = document.createElement("script");
+    script.id = "bossman-recovery-loader";
+    script.src = "recovery-loader.js?v=20261017a";
+    document.body.appendChild(script);
+  });
+
   var card = document.getElementById("install-card");
   var button = document.getElementById("install-button");
   if (!card) return;
@@ -26,6 +35,6 @@
       promptEvent = null;
       button.classList.add("hidden");
     });
-  });
+  }
   window.addEventListener("appinstalled", function() { card.classList.add("hidden"); });
 })();
