@@ -227,3 +227,58 @@ function call(params) {
     default:                return Promise.resolve({ error: "Unknown action" });
   }
 }
+
+// Barber-only UI enhancement: direct phone call button for the customer currently being served.
+(function installBossmanBarberCallButton() {
+  function normalizeCallNumber(value) {
+    var digits = String(value || "").replace(/\D/g, "");
+    if (!digits) return "";
+    if (digits.charAt(0) === "0") return "+60" + digits.slice(1);
+    if (digits.indexOf("60") === 0) return "+" + digits;
+    return digits;
+  }
+
+  function setup() {
+    var servingSection = document.getElementById("serving-section");
+    var phoneLabel = document.getElementById("serving-phone");
+    var actions = servingSection && servingSection.querySelector(".icon-btns");
+    if (!servingSection || !phoneLabel || !actions) return;
+
+    var callLink = document.getElementById("serving-call-customer");
+    if (!callLink) {
+      callLink = document.createElement("a");
+      callLink.id = "serving-call-customer";
+      callLink.className = "icon-btn call-customer";
+      callLink.textContent = "📞 Call Customer";
+      callLink.title = "Call the customer currently being served";
+      callLink.setAttribute("aria-label", "Call customer");
+      actions.insertBefore(callLink, actions.firstChild);
+      actions.style.gridTemplateColumns = "repeat(2, minmax(0, 1fr))";
+    }
+
+    function syncCallLink() {
+      var number = normalizeCallNumber(phoneLabel.textContent);
+      if (!number || number === "-") {
+        callLink.removeAttribute("href");
+        callLink.setAttribute("aria-disabled", "true");
+        callLink.style.opacity = "0.55";
+        callLink.style.pointerEvents = "none";
+      } else {
+        callLink.href = "tel:" + number;
+        callLink.removeAttribute("aria-disabled");
+        callLink.style.opacity = "1";
+        callLink.style.pointerEvents = "auto";
+      }
+    }
+
+    syncCallLink();
+    new MutationObserver(syncCallLink).observe(phoneLabel, {
+      childList: true,
+      characterData: true,
+      subtree: true
+    });
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", setup);
+  else setup();
+})();
