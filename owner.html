@@ -180,20 +180,12 @@
     <p style="text-align:center;color:var(--cream-dim);padding:2rem">Loading…</p>
   </div>
 
-  <p class="refresh-note">Auto-refreshes every 30 seconds</p>
+  <p class="refresh-note">Auto-refreshes every 10 seconds</p>
 
 </div>
 
-<script src="api.js?v=20261011b"></script>
+<script src="api.js?v=20261017c"></script>
 <script>
-function remainingCut(serving, avg) {
-  if (!serving) return 0;
-  var duration = serving.durationMinutes || avg;
-  if (!serving.calledAt) return duration;
-  var elapsedMin = (Date.now() - new Date(serving.calledAt).getTime()) / 60000;
-  return Math.max(0, Math.round(duration - elapsedMin));
-}
-
 function tickClock() {
   var el = document.getElementById("clock");
   if (!el) return;
@@ -508,23 +500,20 @@ function render(workers) {
   var totalWaiting = 0, totalServing = 0, totalActive = 0;
   var html = "";
   workers.forEach(function(b) {
-    var queue   = b.queue || [];
-    var waiting = queue.filter(function(e) { return e.status === "waiting"; });
-    var serving = queue.find(function(e)  { return e.status === "called"; });
+    var queue = b.queue || [];
+    var timing = bossmanQueueTiming(queue, b.avgMinutes || 35);
+    var waiting = timing.waiting;
+    var serving = timing.serving;
 
-    totalWaiting += waiting.length;
+    totalWaiting += timing.waitingCount;
     if (serving)    totalServing++;
     if (b.isAvailable && b.role === "barber") totalActive++;
 
     var pillClass = !b.isAvailable ? "pill-inactive" : serving ? "pill-busy" : "pill-active";
     var pillText  = !b.isListed ? "Hidden" : b.offToday ? "Off today" : !b.isActive ? "Paused" : serving ? "Cutting" : "Active";
-    var avg = b.avgMinutes || 35;
-    var remaining = remainingCut(serving, avg);
-
     html += '<div class="barber-card"><div class="barber-header">';
     html +=   '<div><div class="barber-name">' + escapeHtml(b.name) + '</div>';
-    var lastWait = waiting.length === 0 ? 0 : (serving ? remaining : 0) + (waiting.length - 1) * avg;
-    html +=   '<div class="barber-meta">' + waiting.length + ' waiting · ~' + lastWait + ' min total</div></div>';
+    html +=   '<div class="barber-meta">' + timing.waitingCount + ' waiting · ~' + timing.queueMinutes + ' min queue</div></div>';
     html +=   '<span class="status-pill ' + pillClass + '">' + pillText + '</span></div>';
 
     if (serving) {
@@ -538,7 +527,7 @@ function render(workers) {
       html += '<div class="empty-queue">Queue is empty</div>';
     } else {
       waiting.forEach(function(entry, i) {
-        var waitMins = (serving ? remaining : 0) + i * avg;
+        var waitMins = bossmanWaitForEntry(entry.id, queue, timing.avgMinutes);
         html += '<div class="queue-row"><div class="q-num">' + (i + 1) + '</div>';
         html +=   '<div><div class="q-name">' + escapeHtml(entry.customerName) + '</div>';
         html +=   '<div class="q-phone">' + escapeHtml(entry.phone) + '</div></div>';
@@ -575,7 +564,7 @@ loadAll();
 loadStats();
 loadServices();
 loadOwnerBookings();
-setInterval(loadAll, 30000);
+setInterval(loadAll, 10000);
 setInterval(loadStats, 60000);
 setInterval(loadOwnerBookings, 30000);
 </script>
