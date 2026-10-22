@@ -297,3 +297,17 @@ function call(params) {
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", load);
   else load();
 })();
+
+// Owner controls and customer-side follow-up for owner queue transfers.
+(function loadBossmanOwnerQueueControls() {
+  function load() {
+    if (!document.getElementById("barbers-container") && !document.getElementById("step-done")) return;
+    if (document.getElementById("bossman-owner-queue-controls")) return;
+    var script = document.createElement("script");
+    script.id = "bossman-owner-queue-controls";
+    script.src = "owner-queue-controls.js?v=20261022a";
+    document.body.appendChild(script);
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", load);
+  else load();
+})();
