@@ -1,7 +1,7 @@
-const CACHE_NAME = "bossman-customer-v14";
+const CACHE_NAME = "bossman-customer-v15";
 const SHELL = [
   "book.html", "index.html", "brand.css", "api.js", "pwa.js", "logo.png",
-  "recovery-loader.js", "recovery.js", "turn-alerts.js", "switch-barber.js",
+  "recovery-loader.js", "recovery.js", "turn-alerts.js", "switch-barber.js", "owner-queue-controls.js",
   "manifest.json", "icon-192.png", "icon-512.png", "apple-touch-icon.png"
 ];
 const shellPaths = new Set(SHELL.map(path => new URL(path, self.registration.scope).pathname));
