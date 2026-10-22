@@ -1,4 +1,4 @@
-const CACHE_NAME = "bossman-customer-v13";
+const CACHE_NAME = "bossman-customer-v14";
 const SHELL = [
   "book.html", "index.html", "brand.css", "api.js", "pwa.js", "logo.png",
   "recovery-loader.js", "recovery.js", "turn-alerts.js", "switch-barber.js",
@@ -7,7 +7,9 @@ const SHELL = [
 const shellPaths = new Set(SHELL.map(path => new URL(path, self.registration.scope).pathname));
 
 self.addEventListener("install", event => {
-  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(SHELL.map(path => new URL(path, self.registration.scope).href))));
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(
+    SHELL.map(path => new Request(new URL(path, self.registration.scope).href, { cache: "reload" }))
+  )));
   self.skipWaiting();
 });
 
@@ -19,11 +21,13 @@ self.addEventListener("activate", event => {
 });
 
 self.addEventListener("fetch", event => {
+  // Never intercept the HEAD request used to synchronize the shop clock.
   if (event.request.method !== "GET") return;
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin || !shellPaths.has(url.pathname)) return;
   const cacheKey = new Request(url.origin + url.pathname);
-  event.respondWith(fetch(event.request).then(response => {
+  const isCode = /\.(html|js)$/.test(url.pathname);
+  event.respondWith(fetch(event.request, isCode ? { cache: "no-store" } : {}).then(response => {
     if (response.ok) {
       const copy = response.clone();
       caches.open(CACHE_NAME).then(cache => cache.put(cacheKey, copy));
