@@ -1,7 +1,7 @@
-const CACHE_NAME = "bossman-customer-v15";
+const CACHE_NAME = "bossman-customer-v16";
 const SHELL = [
   "book.html", "index.html", "brand.css", "api.js", "pwa.js", "logo.png",
-  "recovery-loader.js", "recovery.js", "turn-alerts.js", "switch-barber.js", "owner-queue-controls.js",
+  "recovery-loader.js", "recovery.js", "turn-alerts.js", "switch-barber.js", "owner-queue-controls.js", "queue-time.js",
   "manifest.json", "icon-192.png", "icon-512.png", "apple-touch-icon.png"
 ];
 const shellPaths = new Set(SHELL.map(path => new URL(path, self.registration.scope).pathname));
@@ -21,7 +21,7 @@ self.addEventListener("activate", event => {
 });
 
 self.addEventListener("fetch", event => {
-  // Never intercept the HEAD request used to synchronize the shop clock.
+  // Database clock POSTs and all cross-origin API responses are never cached.
   if (event.request.method !== "GET") return;
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin || !shellPaths.has(url.pathname)) return;
