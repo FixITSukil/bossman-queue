@@ -311,3 +311,17 @@ function call(params) {
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", load);
   else load();
 })();
+
+// Shared database time and countdown on customer, barber and owner screens.
+(function loadBossmanQueueTime() {
+  function load() {
+    if (document.getElementById("bossman-queue-time")) return;
+    if (!document.getElementById("step-done") && !document.getElementById("barber-name") && !document.getElementById("barbers-container") && !document.getElementById("join-form")) return;
+    var script = document.createElement("script");
+    script.id = "bossman-queue-time";
+    script.src = "queue-time.js?v=20261031a";
+    document.body.appendChild(script);
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", load);
+  else load();
+})();
