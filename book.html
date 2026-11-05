@@ -48,7 +48,7 @@
   <div class="brand">
     <img src="logo.png" alt="Bossman Gentleman's Club Barbershop">
     <h1>Join the queue</h1>
-    <p class="lead">Choose your barber and see the live queue before you join, wherever you are. Online joining is open from 11:00 AM to 10:45 PM Malaysia time.</p>
+    <p class="lead">Choose your barber and see the live queue before you join, wherever you are. Online joining is open from 10:00 AM to 10:45 PM Malaysia time.</p>
   </div>
 
   <section class="install-card" id="install-card">
@@ -86,8 +86,9 @@
     </section>
   </div>
 </main>
-<script src="api.js?v=20261011a"></script>
-<script src="pwa.js?v=20261010d"></script>
+<script src="api.js?v=20261105a"></script>
+<script src="pwa.js?v=20261105a"></script>
+<script id="bossman-queue-time" src="queue-time.js?v=20261105-opening-10am"></script>
 <script>
 var selectedBarber = null;
 var barbers = [];
@@ -106,11 +107,11 @@ function malaysiaMinutes() {
 }
 function joiningOpen() {
   var minute = malaysiaMinutes();
-  return minute >= 660 && minute <= 1365;
+  return minute >= 600 && minute <= 1365;
 }
 function updateButton() {
   joinButton.disabled = joining || !selectedBarber || !selectedBarber.isAvailable || !joiningOpen() || document.getElementById("join-form").classList.contains("hidden");
-  document.getElementById("hours-note").textContent = joiningOpen() ? "Last online join: 10:45 PM MYT." : "Online joining opens at 11:00 AM and closes at 10:45 PM MYT.";
+  document.getElementById("hours-note").textContent = joiningOpen() ? "Last online join: 10:45 PM MYT." : "Online joining opens at 10:00 AM and closes at 10:45 PM MYT.";
 }
 function queueSummary(barber) {
   var entries = queueSnapshot[barber.id];
@@ -221,7 +222,7 @@ setInterval(refreshAvailability, 10000);
 
 joinButton.onclick = function() {
   if (!selectedBarber || !selectedBarber.isAvailable || joining) return;
-  if (!joiningOpen()) { updateButton(); showError("Online joining is open from 11:00 AM to 10:45 PM MYT."); return; }
+  if (!joiningOpen()) { updateButton(); showError("Online joining is open from 10:00 AM to 10:45 PM MYT."); return; }
   var name = document.getElementById("customer-name").value.trim();
   var phone = document.getElementById("customer-phone").value.replace(/\D/g, "");
   if (name.length < 2 || phone.length < 9 || phone.length > 15) { showError("Enter your name and a valid phone number."); return; }
