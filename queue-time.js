@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   if (window.BossmanTiming) return;
-  var VERSION = '20261031a';
+  var VERSION = '20261105-opening-10am';
   var CLOCK_MAX_AGE = 90000, QUEUE_MAX_AGE = 30000;
   var sample = null, pending = null, clockSerial = 0, failed = false;
   var queues = {}, entries = {}, sequence = 0, generation = 0;
@@ -22,7 +22,7 @@
   }
   function openState() {
     var minutes = minutesAt(nowMs());
-    return minutes === null ? null : minutes >= 660 && minutes < 1366;
+    return minutes === null ? null : minutes >= 600 && minutes < 1366;
   }
   function clockLabel() {
     var utc = nowMs();
@@ -156,15 +156,15 @@
         text(el('hours-title'),failed ? 'Could not confirm shop time' : 'Checking shop time…');
         text(el('hours-text'),'You can still try joining. The server checks opening hours; your existing queue is not affected.');
       } else if (!state) {
-        text(el('hours-title'),minutes < 660 ? "The queue isn't open yet" : 'The queue is closed for today');
-        text(el('hours-text'),'Joining is open from 11:00 AM to 10:45 PM Malaysia time. Existing customers can still reopen their queue.');
+        text(el('hours-title'),minutes < 600 ? "The queue isn't open yet" : 'The queue is closed for today');
+        text(el('hours-text'),'Joining is open from 10:00 AM to 10:45 PM Malaysia time. Existing customers can still reopen their queue.');
         if (el('step-form') && !el('step-form').classList.contains('hidden') && typeof window.showPick === 'function') window.showPick();
       }
     }
     if (el('join-button') && el('join-form')) {
       var b = window.selectedBarber;
       el('join-button').disabled = !!window.joining || !b || !b.isAvailable || state === false || el('join-form').classList.contains('hidden');
-      text(el('hours-note'),state === null ? 'Checking shop time; the server will confirm when you join.' : state ? 'Last online join: 10:45 PM MYT.' : 'Online joining opens at 11:00 AM and closes at 10:45 PM MYT.');
+      text(el('hours-note'),state === null ? 'Checking shop time; the server will confirm when you join.' : state ? 'Last online join: 10:45 PM MYT.' : 'Online joining opens at 10:00 AM and closes at 10:45 PM MYT.');
     }
   }
   function customerNote() {
