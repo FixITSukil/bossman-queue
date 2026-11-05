@@ -99,7 +99,7 @@
   <div class="closed hidden" id="hours-closed" role="status">
     <div class="ico">🕒</div>
     <div class="ttl" id="hours-title">The queue is closed</div>
-    <div class="txt" id="hours-text">QR joining is open from 11:00 AM to 10:45 PM Malaysia time.</div>
+    <div class="txt" id="hours-text">QR joining is open from 10:00 AM to 10:45 PM Malaysia time.</div>
   </div>
   <div class="stack" id="barber-list">
     <p id="loading">Loading barbers…</p>
@@ -168,12 +168,13 @@
   <details>
     <summary>Add Bossman to your Home Screen</summary>
     <p><strong>iPhone:</strong> Open this link in Safari, tap Share, then Add to Home Screen and Add.</p>
-    <p><strong>Android:</strong> Open this link in Chrome, then use Install app or Add to Home screen from the browser menu.</p>
+    <p><strong>Android:</strong> Open this link in Chrome, then use Install app or Add to home screen from the browser menu.</p>
   </details>
 </section>
 
-<script src="api.js?v=20261017d"></script>
-<script src="pwa.js?v=20261010d"></script>
+<script src="api.js?v=20261105a"></script>
+<script src="pwa.js?v=20261105a"></script>
+<script id="bossman-queue-time" src="queue-time.js?v=20261105-opening-10am"></script>
 <script>
 var barbers = [];
 var selectedBarber = null;
@@ -211,19 +212,19 @@ function malaysiaMinutes() {
 
 function joiningOpen() {
   var minute = malaysiaMinutes();
-  return minute >= 11 * 60 && minute <= 22 * 60 + 45;
+  return minute >= 10 * 60 && minute <= 22 * 60 + 45;
 }
 
 function updateHoursUI() {
   var minute = malaysiaMinutes();
-  var open = minute >= 11 * 60 && minute <= 22 * 60 + 45;
+  var open = minute >= 10 * 60 && minute <= 22 * 60 + 45;
   document.getElementById("hours-closed").classList.toggle("hidden", open);
   document.getElementById("barber-list").classList.toggle("hidden", !open);
   if (!open) {
-    document.getElementById("hours-title").textContent = minute < 11 * 60 ? "The queue isn't open yet" : "The queue is closed for today";
-    document.getElementById("hours-text").textContent = minute < 11 * 60
-      ? "Please scan again from 11:00 AM. The last join is at 10:45 PM Malaysia time."
-      : "Please come back tomorrow from 11:00 AM. The last join is at 10:45 PM Malaysia time.";
+    document.getElementById("hours-title").textContent = minute < 10 * 60 ? "The queue isn't open yet" : "The queue is closed for today";
+    document.getElementById("hours-text").textContent = minute < 10 * 60
+      ? "Please scan again from 10:00 AM. The last join is at 10:45 PM Malaysia time."
+      : "Please come back tomorrow from 10:00 AM. The last join is at 10:45 PM Malaysia time.";
     if (!document.getElementById("step-form").classList.contains("hidden")) showPick();
   }
 }
