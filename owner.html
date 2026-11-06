@@ -131,6 +131,15 @@
     </form>
   </section>
 
+  <section class="service-panel" aria-labelledby="backup-heading">
+    <h2 id="backup-heading">Google Sheets records</h2>
+    <p id="backup-status" role="status">Checking data recording…</p>
+    <p id="backup-last-sync"></p>
+    <p id="backup-pending"></p>
+    <a id="backup-sheet-link" class="refresh-btn hidden" target="_blank" rel="noopener noreferrer" style="display:inline-block;margin-top:0.7rem;text-decoration:none;">Open permanent records</a>
+    <p>Registrations, customer details and queue changes are retained, including completed and cancelled entries.</p>
+  </section>
+
   <section class="service-panel">
     <h2>Customer database</h2>
     <p>Customer names and phone numbers from the live queue and older appointments are stored in the private database. Download a customer contact list or the full booking history as CSV.</p>
@@ -568,5 +577,6 @@ setInterval(loadAll, 10000);
 setInterval(loadStats, 60000);
 setInterval(loadOwnerBookings, 30000);
 </script>
+<script src="owner-backup-status.js?v=20261107a"></script>
 </body>
 </html>

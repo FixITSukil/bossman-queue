@@ -28,6 +28,7 @@ Everything runs on hosted web services; there is nothing to install on customer 
 1. Turn on/unlock the counter iPad and open the **Bossman Queue** Home Screen icon.
 2. Keep the QR display open for the whole business day.
 3. Each worker opens their own private dashboard link on their phone.
+4. In the owner dashboard, check **Google Sheets records**. Review the last confirmed copy time and changes waiting to copy. Open **permanent records** to see the private workbook.
 
 ### A customer arrives
 1. They scan the QR on the iPad.
@@ -45,6 +46,14 @@ Everything runs on hosted web services; there is nothing to install on customer 
 - Staff must explicitly complete, cancel, or mark a no-show for each customer. Keep unresolved customers in their existing queue until staff resolve them.
 - The former **11 PM Malaysia time** cron reset was disabled on **6 November 2026** after it deleted customer records. Do not re-enable it. Queue history and customer records must be retained; `supabase/nightly-reset.sql` now disables the legacy job and makes its function a no-op.
 - After a database rebuild or restore, verify the legacy cron job remains disabled before reopening the queue.
+
+### Permanent customer records
+- Customer names, phone numbers, assigned workers, queue positions, status and service timestamps are recorded in a private database journal whenever a record is created, changed or deleted.
+- The Google recorder copies saved changes every minute. **Queue Records** and **Appointments** retain each entry; **Activity History** retains every recorded change; **Business Records** keeps staff/service settings, daily totals and owner activity. Completed and cancelled entries remain available.
+- **Sync Status** and the owner dashboard show the last confirmed copy, pending changes and failures. If copying fails, the changes remain in the private database journal for retry. Have the administrator check an overdue or failed copy promptly.
+- The Google recorder needs its one-time Google authorization and an enabled time-driven trigger. It runs in Google and does not require the counter tablet or this computer to stay open.
+- Keep the workbook private. Store its backup-only connection key in Apps Script properties, never in a Sheet cell or the public website. Customer cancellation tokens and staff authentication secrets are not exported.
+- The recording system preserves surviving records and new activity. It does not recreate the individual records deleted on 6 November 2026.
 
 ---
 
