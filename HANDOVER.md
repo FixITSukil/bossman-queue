@@ -42,8 +42,9 @@ Everything runs on hosted web services; there is nothing to install on customer 
 - Tap done when finished, or no-show when appropriate.
 
 ### Closing
-- The queue is designed to snapshot the day's totals and reset automatically at **11 PM Malaysia time** via Supabase Cron.
-- The scheduled job should be verified in the live Supabase project after any database rebuild or project restore.
+- Staff must explicitly complete, cancel, or mark a no-show for each customer. Keep unresolved customers in their existing queue until staff resolve them.
+- The former **11 PM Malaysia time** cron reset was disabled on **6 November 2026** after it deleted customer records. Do not re-enable it. Queue history and customer records must be retained; `supabase/nightly-reset.sql` now disables the legacy job and makes its function a no-op.
+- After a database rebuild or restore, verify the legacy cron job remains disabled before reopening the queue.
 
 ---
 
@@ -123,6 +124,10 @@ The QR page also requests a browser screen wake lock when supported, with iPad A
 | Customer is physically inside but location is rejected | Allow location access in the browser and retry. |
 | Worker dashboard says invalid PIN/secret | Use that worker's current private dashboard URL. |
 | Owner dashboard fails | Confirm the private owner URL contains the current owner secret. |
+
+### Recovering customers after a missing-queue incident
+
+If customer records were deleted, **Find My Queue cannot recreate them**. Ask the waiting customers and staff to confirm the original order before adding anyone again. Each worker can use **+ Quick Service** on their private dashboard, enter the customer's actual name and phone number and the expected service duration, then choose **End of queue**. Add customers in the confirmed order. This creates replacement queue records; it does not restore the deleted records or prove their original positions. Customers can then use **Find My Queue** with the same name and phone number to reopen their replacement entry.
 
 ---
 

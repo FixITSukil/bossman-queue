@@ -158,6 +158,7 @@
       <button class="btn-gold btn-full" type="button" onclick="startNewBooking()" style="margin-top:0.9rem;">Book Again</button>
     </div>
     <button class="btn-back cancel-booking-btn" id="btn-leave" onclick="leaveQueue()" style="margin-top:1.25rem;display:block;width:100%;color:var(--cream-dim);">Cancel my booking</button>
+    <button class="btn-back hidden" id="replace-missing-booking" type="button" onclick="replaceMissingBooking()" style="margin-top:1rem;width:100%;">Start a new booking</button>
   </div>
 </div>
 
@@ -183,6 +184,7 @@ var myEntryId = null;
 var myCancelToken = null;
 var myBarberId = null;
 var refreshInterval = null;
+var queueEntryMissing = false;
 var facialTherapist = null;
 var myFacialEntryId = null;
 var myFacialCancelToken = null;
@@ -261,7 +263,7 @@ function resumeEntry() {
   document.getElementById("step-done").classList.remove("hidden");
 
   call({ action: "getEntry", id: saved.entryId }).then(function(entry) {
-    if (!entry) { clearEntry(); showPick(); loadBarbers(); return; }
+    if (!entry) { showQueueMissing(); return; }
     if (entry.status === "done") {
       releaseCompletedEntry();
       showPick();
@@ -487,6 +489,7 @@ function doJoin(name, phone, errEl) {
 }
 
 function resetCustomerStatePanels() {
+  hideMissingBookingAction();
   document.getElementById("review-box").classList.add("hidden");
   document.getElementById("cancel-box").classList.add("hidden");
   document.getElementById("self-cancel-box").classList.add("hidden");
@@ -496,10 +499,13 @@ function resetCustomerStatePanels() {
 }
 
 function showYourTurn() {
+  hideMissingBookingAction();
   document.getElementById("cancel-box").classList.add("hidden");
   document.getElementById("self-cancel-box").classList.add("hidden");
   document.getElementById("conf-icon").textContent = "💈";
   document.getElementById("conf-title").textContent = "It's your turn!";
+  document.getElementById("conf-badge").classList.remove("hidden");
+  document.getElementById("conf-refresh").classList.remove("hidden");
   document.getElementById("conf-pos").textContent = "GO";
   document.querySelector("#conf-badge .pos-label").textContent = "please proceed to your barber";
   document.getElementById("conf-stats").classList.add("hidden");
@@ -509,6 +515,7 @@ function showYourTurn() {
 }
 
 function showReviewComplete() {
+  hideMissingBookingAction();
   if (refreshInterval) clearInterval(refreshInterval);
   releaseCompletedEntry();
   document.getElementById("cancel-box").classList.add("hidden");
@@ -523,6 +530,7 @@ function showReviewComplete() {
 }
 
 function showQueueEnded() {
+  hideMissingBookingAction();
   if (refreshInterval) clearInterval(refreshInterval);
   document.getElementById("cancel-box").classList.add("hidden");
   document.getElementById("self-cancel-box").classList.add("hidden");
@@ -536,7 +544,54 @@ function showQueueEnded() {
   clearEntry();
 }
 
+function showQueueMissing() {
+  // A missing row is not proof of completion or cancellation. Keep the private
+  // receipt so a restored record can reconnect to this customer's phone.
+  document.getElementById("conf-icon").textContent = "⏳";
+  document.getElementById("conf-title").textContent = "We could not find your queue entry";
+  document.getElementById("conf-badge").classList.add("hidden");
+  document.getElementById("conf-stats").classList.add("hidden");
+  document.getElementById("btn-leave").classList.add("hidden");
+  document.getElementById("review-box").classList.add("hidden");
+  document.getElementById("cancel-box").classList.add("hidden");
+  document.getElementById("self-cancel-box").classList.add("hidden");
+  document.getElementById("conf-refresh").classList.remove("hidden");
+  document.getElementById("conf-refresh").textContent = "Your saved booking is still on this phone. Please ask Bossman staff before joining again. We will keep checking every 10 seconds.";
+  queueEntryMissing = true;
+  document.getElementById("replace-missing-booking").classList.remove("hidden");
+  if (!refreshInterval) refreshInterval = setInterval(refreshPosition, 10000);
+}
+
+function hideMissingBookingAction() {
+  queueEntryMissing = false;
+  document.getElementById("replace-missing-booking").classList.add("hidden");
+}
+
+function archiveMissingQueueReceipt(key) {
+  try {
+    var raw = localStorage.getItem(key);
+    if (!raw) return false;
+    var history;
+    try { history = JSON.parse(localStorage.getItem("bossman_missing_queue_receipts") || "[]"); } catch (e) { history = []; }
+    if (!Array.isArray(history)) history = [];
+    history.push({ savedAt: new Date().toISOString(), receipt: JSON.parse(raw) });
+    localStorage.setItem("bossman_missing_queue_receipts", JSON.stringify(history.slice(-10)));
+    return true;
+  } catch (e) { return false; }
+}
+
+function replaceMissingBooking() {
+  if (!queueEntryMissing) return;
+  if (!confirm("Your previous queue entry could not be found. Starting a new booking will not recover its old place. Please check with Bossman staff first. Continue with a new booking?")) return;
+  if (!archiveMissingQueueReceipt(STORE_KEY)) {
+    alert("Could not save your previous booking receipt. Please ask Bossman staff for help.");
+    return;
+  }
+  startNewBooking();
+}
+
 function showBarberCancelled() {
+  hideMissingBookingAction();
   if (refreshInterval) clearInterval(refreshInterval);
   localStorage.removeItem("bossman_last_join");
   document.getElementById("conf-icon").textContent = "💬";
@@ -551,6 +606,7 @@ function showBarberCancelled() {
 }
 
 function showCustomerCancelled() {
+  hideMissingBookingAction();
   if (refreshInterval) clearInterval(refreshInterval);
   clearEntry();
   document.getElementById("conf-icon").textContent = "👋";
@@ -569,8 +625,7 @@ function refreshPosition() {
 
   call({ action: "getEntry", id: myEntryId }).then(function(entryStatus) {
     if (!entryStatus) {
-      clearEntry();
-      showQueueEnded();
+      showQueueMissing();
       return;
     }
     if (entryStatus.status === "done") {

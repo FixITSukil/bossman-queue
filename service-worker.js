@@ -1,4 +1,4 @@
-const CACHE_NAME = "bossman-customer-v17";
+const CACHE_NAME = "bossman-customer-v18";
 const SHELL = [
   "book.html", "index.html", "brand.css", "api.js", "pwa.js", "logo.png",
   "recovery-loader.js", "recovery.js", "turn-alerts.js", "switch-barber.js", "owner-queue-controls.js", "queue-time.js",

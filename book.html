@@ -61,10 +61,11 @@
   </section>
 
   <section class="panel hidden" id="existing-entry">
-    <h2>You're already in the queue</h2>
+    <h2 id="existing-title">You're already in the queue</h2>
     <p class="muted" id="existing-message">Keep track of your place and estimated wait on your queue page. You can only hold one queue place at a time.</p>
     <a class="link" href="index.html">View my place in the queue →</a>
     <button class="secondary" id="cancel-existing" type="button">Cancel my booking</button>
+    <button class="secondary hidden" id="replace-missing-booking" type="button">Start a new booking</button>
     <p class="error hidden" id="existing-error" role="alert"></p>
   </section>
 
@@ -98,6 +99,7 @@ var joining = false;
 var availabilityLoading = false;
 var storeKey = "bossman_queue";
 var existingEntry = null;
+var existingEntryMissing = false;
 
 function malaysiaMinutes() {
   var parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kuala_Lumpur", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date());
@@ -174,7 +176,22 @@ function checkExistingEntry() {
   try { saved = JSON.parse(localStorage.getItem(storeKey) || "null"); } catch (e) { localStorage.removeItem(storeKey); }
   if (!saved || !saved.entryId) { document.getElementById("join-form").classList.remove("hidden"); updateButton(); return; }
   DB.getEntry(saved.entryId).then(function(entry) {
-    if (entry && (entry.status === "waiting" || entry.status === "called")) {
+    if (!entry) {
+      // Preserve the private receipt when the server cannot find the record.
+      // Missing data must not silently release an existing customer's place.
+      document.getElementById("existing-entry").classList.remove("hidden");
+      document.getElementById("join-form").classList.add("hidden");
+      document.getElementById("existing-title").textContent = "We could not find your queue entry";
+      document.getElementById("existing-message").textContent = "Your saved booking is still on this phone. Please ask Bossman staff before joining again, or open your queue page to keep checking.";
+      document.getElementById("cancel-existing").classList.add("hidden");
+      existingEntryMissing = true;
+      document.getElementById("replace-missing-booking").classList.remove("hidden");
+    } else if (entry.status === "waiting" || entry.status === "called") {
+      existingEntryMissing = false;
+      document.getElementById("replace-missing-booking").classList.add("hidden");
+      document.getElementById("existing-title").textContent = "You're already in the queue";
+      document.getElementById("existing-message").textContent = "Keep track of your place and estimated wait on your queue page. You can only hold one queue place at a time.";
+      document.getElementById("cancel-existing").classList.remove("hidden");
       existingEntry = saved;
       document.getElementById("existing-entry").classList.remove("hidden");
       document.getElementById("join-form").classList.add("hidden");
@@ -183,17 +200,52 @@ function checkExistingEntry() {
         document.getElementById("cancel-existing").classList.add("hidden");
       }
     } else {
+      existingEntryMissing = false;
+      document.getElementById("replace-missing-booking").classList.add("hidden");
+      document.getElementById("existing-entry").classList.add("hidden");
       localStorage.removeItem(storeKey);
       if (entry && entry.status === "done") localStorage.removeItem("bossman_last_join");
       document.getElementById("join-form").classList.remove("hidden");
     }
     updateButton();
   }).catch(function() {
+    existingEntryMissing = false;
+    document.getElementById("replace-missing-booking").classList.add("hidden");
     document.getElementById("existing-entry").classList.remove("hidden");
+    document.getElementById("existing-title").textContent = "Could not check your queue status";
     document.getElementById("existing-message").textContent = "Could not check your current queue place. Please refresh this page.";
     document.getElementById("cancel-existing").classList.add("hidden");
   });
 }
+
+function archiveMissingQueueReceipt(key) {
+  try {
+    var raw = localStorage.getItem(key);
+    if (!raw) return false;
+    var history;
+    try { history = JSON.parse(localStorage.getItem("bossman_missing_queue_receipts") || "[]"); } catch (e) { history = []; }
+    if (!Array.isArray(history)) history = [];
+    history.push({ savedAt: new Date().toISOString(), receipt: JSON.parse(raw) });
+    localStorage.setItem("bossman_missing_queue_receipts", JSON.stringify(history.slice(-10)));
+    return true;
+  } catch (e) { return false; }
+}
+
+document.getElementById("replace-missing-booking").onclick = function() {
+  if (!existingEntryMissing) return;
+  if (!confirm("Your previous queue entry could not be found. Starting a new booking will not recover its old place. Please check with Bossman staff first. Continue with a new booking?")) return;
+  if (!archiveMissingQueueReceipt(storeKey)) {
+    alert("Could not save your previous booking receipt. Please ask Bossman staff for help.");
+    return;
+  }
+  localStorage.removeItem(storeKey);
+  existingEntry = null;
+  existingEntryMissing = false;
+  document.getElementById("replace-missing-booking").classList.add("hidden");
+  document.getElementById("existing-entry").classList.add("hidden");
+  document.getElementById("join-form").classList.remove("hidden");
+  updateButton();
+};
 
 document.getElementById("cancel-existing").onclick = function() {
   if (existingEntry && existingEntry.facialEntryId) { location.href = "index.html"; return; }

@@ -74,7 +74,7 @@
     overlay.innerHTML =
       '<div class="recovery-dialog" role="dialog" aria-modal="true" aria-labelledby="queue-recovery-title">' +
         '<h2 id="queue-recovery-title">Find My Queue</h2>' +
-        '<p>If your original queue page was closed, enter the exact same name and phone number used when you registered.</p>' +
+        '<p>Enter the exact same name and phone number used when you registered to find an existing active queue entry. If your entry is missing, please ask Bossman staff before joining again.</p>' +
         '<form id="queue-recovery-form">' +
           '<label for="queue-recovery-name">Your name</label>' +
           '<input id="queue-recovery-name" name="name" type="text" autocomplete="name" maxlength="80" required>' +

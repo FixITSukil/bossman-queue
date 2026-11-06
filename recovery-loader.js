@@ -43,7 +43,7 @@
 
       var script = document.createElement("script");
       script.id = "bossman-recovery-script";
-      script.src = "recovery.js?v=20261017b";
+      script.src = "recovery.js?v=20261106a";
       script.onload = installDuplicateJoinHelper;
       document.body.appendChild(script);
     }).catch(function() {});
