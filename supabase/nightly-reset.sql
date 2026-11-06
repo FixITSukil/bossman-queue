@@ -1,44 +1,41 @@
 -- ============================================================
--- BOSSMAN QUEUE — Nightly auto-reset (11 PM Malaysia time)
--- Logs the day's totals to history, then clears the queue to 0.
+-- BOSSMAN QUEUE — Legacy nightly reset DISABLED (2026-11-06)
 --
--- SETUP (one time):
--- 1. Supabase → Database → Extensions → search "pg_cron" → enable it.
--- 2. Then paste + run this whole file in the SQL Editor.
+-- The former 23:00 Malaysia-time job deleted all queue entries,
+-- including unresolved customers and individual booking history.
+-- Do not reinstate that deletion or schedule this function again.
+-- Owner closeout must retain customer records and use explicit
+-- completion/cancellation instead of deleting queue history.
+--
+-- Applied live as migration disable_destructive_bossman_nightly_reset.
+-- This script changes no queue rows, daily totals, barber availability,
+-- private customer keys, owner audit records, or opening hours.
 -- ============================================================
 
-create table if not exists daily_totals (
-  day          date primary key,
-  total_joined int,
-  total_served int,
-  per_worker   json,
-  recorded_at  timestamptz default now()
-);
-alter table daily_totals enable row level security;
-drop policy if exists dt_sel on daily_totals;
-create policy dt_sel on daily_totals for select using (true);
-
-create or replace function bossman_nightly_reset()
-returns void language plpgsql security definer set search_path = public as $$
-declare s json;
+do $disable_job$
+declare v_job record;
 begin
-  s := get_daily_stats();
-  insert into daily_totals (day, total_joined, total_served, per_worker)
-  values ((s->>'date')::date, (s->>'totalJoined')::int, (s->>'totalServed')::int, s->'perWorker')
-  on conflict (day) do update
-    set total_joined = excluded.total_joined,
-        total_served = excluded.total_served,
-        per_worker   = excluded.per_worker,
-        recorded_at  = now();
+  if to_regclass('cron.job') is not null then
+    for v_job in select jobid from cron.job where jobname = 'bossman-nightly-reset' loop
+      perform cron.alter_job(job_id := v_job.jobid, active := false);
+    end loop;
+  end if;
+end;
+$disable_job$;
 
-  delete from queue_entries;
-end; $$;
+create or replace function public.bossman_nightly_reset()
+returns void
+language plpgsql
+security invoker
+set search_path = ''
+as $disabled_reset$
+begin
+  -- Deliberate no-op. Never delete bookings or overwrite saved totals.
+  return;
+end;
+$disabled_reset$;
 
--- Cron should be the only caller. Do not expose the reset RPC publicly.
-revoke execute on function bossman_nightly_reset() from public, anon, authenticated;
-
-select cron.unschedule('bossman-nightly-reset')
-  where exists (select 1 from cron.job where jobname = 'bossman-nightly-reset');
-
--- 23:00 Malaysia time = 15:00 UTC.
-select cron.schedule('bossman-nightly-reset', '0 15 * * *', 'select bossman_nightly_reset();');
+revoke all on function public.bossman_nightly_reset()
+  from public, anon, authenticated, service_role;
+comment on function public.bossman_nightly_reset() is
+  'Disabled 2026-11-06 after destructive nightly deletion incident. No-op; never deletes queue entries. Closeout must preserve customer history and unresolved bookings.';
