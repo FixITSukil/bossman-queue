@@ -47,10 +47,12 @@
     var current=null, busy=false, opener=null, oldOverflow='';
     var style=node('style');
     style.textContent='.oq-toolbar{margin:1rem 0;padding:1rem;border:1px solid var(--gold);border-radius:.8rem;background:var(--moss);color:var(--cream)}.oq-toolbar p,.oq-help{font-size:.82rem;line-height:1.5;color:var(--cream-dim);margin:.5rem 0}.oq-manage,.oq-clear{padding:.5rem .7rem;border:1px solid var(--gold);border-radius:.5rem;background:var(--pine);color:var(--gold-bright);font:inherit;font-size:.78rem;cursor:pointer}.oq-clear{margin:.6rem 1rem;color:#f3b0aa;border-color:var(--line)}.oq-row{flex-wrap:wrap;gap:.55rem}.oq-row>div{min-width:0;overflow-wrap:anywhere}.oq-manage{margin-left:auto}.oq-overlay{position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.76);display:flex;align-items:center;justify-content:center;padding:1rem}.oq-hidden{display:none!important}.oq-dialog{background:var(--moss);color:var(--cream);border:1px solid var(--gold);border-radius:1rem;width:100%;max-width:430px;max-height:90vh;overflow:auto;padding:1.3rem;box-sizing:border-box}.oq-dialog h2{font-family:var(--serif);margin:0 0 .5rem}.oq-dialog label{display:block;margin:.8rem 0 .35rem;font-size:.82rem}.oq-dialog input,.oq-dialog select{box-sizing:border-box;width:100%;min-height:44px;background:var(--pine);color:var(--cream);border:1px solid var(--fern);border-radius:.5rem;padding:.65rem;font:inherit;font-size:16px}.oq-dialog select{white-space:normal}.oq-buttons{display:flex;gap:.6rem;margin-top:1rem}.oq-buttons button{flex:1;padding:.8rem;border-radius:.55rem;font:inherit;cursor:pointer}.oq-save{background:var(--gold);color:var(--pine);border:0;font-weight:bold}.oq-close{background:var(--pine);color:var(--cream);border:1px solid var(--line)}.oq-dialog button:disabled{opacity:.55;cursor:wait}.oq-error{color:#f3b0aa;font-size:.82rem;line-height:1.5;margin-top:.7rem}.oq-status{color:var(--gold-bright);font-size:.86rem;line-height:1.5}.oq-history{margin:1rem 0;padding:1rem;background:var(--moss);border:1px solid var(--line);border-radius:.8rem;color:var(--cream)}.oq-history summary{cursor:pointer;color:var(--gold-bright)}.oq-history-item{padding:.65rem 0;border-bottom:1px solid var(--line);font-size:.8rem;line-height:1.5;overflow-wrap:anywhere}.oq-history-item small{display:block;color:var(--cream-dim)}';
+    style.textContent += '.oq-actions{display:flex;flex-wrap:wrap;gap:.45rem;flex:0 0 100%;justify-content:flex-end}.oq-actions .oq-manage{margin-left:0;min-height:44px}.oq-call{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;min-height:44px;padding:.5rem .8rem;border:1px solid var(--gold);border-radius:.5rem;background:var(--gold);color:var(--pine);font:inherit;font-size:.82rem;font-weight:700;text-decoration:none;white-space:nowrap}.oq-call:focus-visible{outline:3px solid var(--cream);outline-offset:2px}.oq-call[aria-disabled=true]{background:var(--pine);color:var(--cream-dim);border-color:var(--line);opacity:.65}';
     document.head.appendChild(style);
     var toolbar=node('section','oq-toolbar'); toolbar.id='owner-queue-tools';
     toolbar.appendChild(node('strong','','Owner queue controls'));
     toolbar.appendChild(node('p','','Use Manage beside a customer to fix missed completions, move them or adjust their service time. Removing a booking preserves its history.'));
+    toolbar.appendChild(node('p','','Call Customer opens your phone dialler without changing the queue. Calls use your phone number; use the Bossman business phone if needed.'));
     var message=node('p','oq-status'); message.id='owner-queue-message'; message.setAttribute('role','status'); toolbar.appendChild(message);
     container.insertAdjacentElement('beforebegin',toolbar);
     var history=node('details','oq-history'); history.id='owner-queue-history';
@@ -137,11 +139,32 @@
         }
       });
     }
+    // A phone call is a tel: link only: no queue mutation, notification RPC or status change.
+    function callNumber(value) {
+      var raw=String(value==null?'':value).trim();
+      if(!/^\+?[0-9\s().-]+$/.test(raw))return '';
+      var digits=raw.replace(/\D/g,'');
+      if(digits.slice(0,2)==='00')digits=digits.slice(2);
+      else if(digits.charAt(0)==='0')digits='60'+digits.slice(1);
+      return /^[1-9]\d{8,14}$/.test(digits)?'+'+digits:'';
+    }
     function addManage(row,b,q) {
       row.classList.add('oq-row');
+      var actions=node('div','oq-actions');
+      var number=callNumber(q.phone);
+      var phone=node(number?'a':'span','oq-call',number?'📞 Call Customer':'No valid phone number');
+      if(number) {
+        phone.href='tel:'+number;
+        phone.setAttribute('aria-label','Call '+(q.customerName||'customer')+' at '+number);
+        phone.title='Call '+(q.customerName||'customer')+' — '+number;
+      } else {
+        phone.setAttribute('aria-disabled','true');
+      }
+      actions.appendChild(phone);
       var button=node('button','oq-manage','Manage'); button.type='button';
       button.setAttribute('aria-label','Manage '+(q.customerName||'customer'));
-      button.onclick=function(){manage(b,q);}; row.appendChild(button);
+      button.onclick=function(){manage(b,q);}; actions.appendChild(button);
+      row.appendChild(actions);
     }
     function loadHistory() {
       sbRpc('owner_queue_history',{p_owner_pin:window.OWNER_PIN}).then(function(r){
