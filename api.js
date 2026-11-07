@@ -306,6 +306,13 @@ function call(params) {
     var script = document.createElement("script");
     script.id = "bossman-owner-queue-controls";
     script.src = "owner-queue-controls.js?v=20261022a";
+    script.onload = function() {
+      if (!document.getElementById("barbers-container") || document.getElementById("bossman-owner-queue-step")) return;
+      var steps = document.createElement("script");
+      steps.id = "bossman-owner-queue-step";
+      steps.src = "owner-queue-step.js?v=20261107a";
+      document.body.appendChild(steps);
+    };
     document.body.appendChild(script);
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", load);
