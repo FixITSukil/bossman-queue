@@ -233,3 +233,105 @@
   function setup(){setupCustomer();setupOwner();}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup);else setup();
 })();
+
+/* Read-only daily cancellation reporting. Does not alter any queue record. */
+(function () {
+  'use strict';
+  function setupCancellationStats() {
+    var panel = document.getElementById('eod');
+    if (!panel || !window.OWNER_PIN || !window.DB || typeof DB.getDailyStats !== 'function'
+        || document.getElementById('eod-cancelled')) return;
+    var numbers = panel.querySelector('.eod-nums');
+    if (!numbers) return;
+    function node(tag, cls, value) {
+      var n = document.createElement(tag);
+      if (cls) n.className = cls;
+      if (value !== undefined) n.textContent = value;
+      return n;
+    }
+    function metric(id, label) {
+      var box = node('div'), value = node('div', 'eod-val', '–');
+      value.id = id; box.appendChild(value); box.appendChild(node('div', 'eod-lbl', label));
+      numbers.appendChild(box); return value;
+    }
+    var cancelled = metric('eod-cancelled', 'cancelled');
+    var noShow = metric('eod-no-show', 'no-shows');
+    var breakdown = node('p', 'ocs-breakdown', 'Checking cancellation totals…');
+    breakdown.id = 'eod-cancellation-breakdown';
+    var note = node('p', 'ocs-note', 'Queue entries registered today, Malaysia time. Repeat registrations count separately. Staff includes barbers and owner; no-shows are not cancellations.');
+    var state = node('p', 'ocs-state'); state.id = 'eod-cancellation-state'; state.setAttribute('role', 'status');
+    var details = node('details', 'ocs-details');
+    details.appendChild(node('summary', '', 'Cancellations by barber'));
+    var workers = node('div'); workers.id = 'eod-cancellation-workers'; details.appendChild(workers);
+    numbers.insertAdjacentElement('afterend', breakdown);
+    breakdown.insertAdjacentElement('afterend', note);
+    note.insertAdjacentElement('afterend', details);
+    details.insertAdjacentElement('afterend', state);
+    var style = node('style');
+    style.textContent = '#eod .eod-nums{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}#eod .ocs-breakdown{font-size:.82rem;line-height:1.5;margin-top:.9rem;font-weight:600}#eod .ocs-note,#eod .ocs-state{font-size:.72rem;line-height:1.5;margin-top:.5rem}#eod .ocs-state:empty{display:none}#eod .ocs-details{margin-top:.8rem;border-top:1px solid rgba(14,40,24,.2);padding-top:.7rem}#eod .ocs-details summary{font-size:.82rem;font-weight:700;cursor:pointer;min-height:32px}#eod .ocs-worker{font-size:.8rem;line-height:1.5;padding:.6rem 0;border-top:1px solid rgba(14,40,24,.12)}#eod .ocs-worker:first-child{border-top:0}#eod .ocs-worker small{display:block}#eod .eod-val{font-variant-numeric:tabular-nums}';
+    document.head.appendChild(style);
+    function count(n) { return typeof n === 'number' && isFinite(n) && n >= 0 && Math.floor(n) === n; }
+    function valid(s) {
+      return s && !s.error && /^\d{4}-\d{2}-\d{2}$/.test(s.date || '')
+        && count(s.totalJoined) && count(s.totalServed) && count(s.totalCancelled)
+        && count(s.cancelledByCustomer) && count(s.cancelledByStaff) && count(s.totalNoShow)
+        && s.totalCancelled === s.cancelledByCustomer + s.cancelledByStaff && Array.isArray(s.perWorker)
+        && s.perWorker.every(function (w) {
+          return w && count(w.cancelled) && count(w.cancelledByCustomer) && count(w.cancelledByStaff)
+            && count(w.noShow) && w.cancelled === w.cancelledByCustomer + w.cancelledByStaff;
+        });
+    }
+    var confirmed = false;
+    function paint(s) {
+      if (!valid(s)) throw new Error('Cancellation figures are unavailable. Refresh to try again.');
+      cancelled.textContent = String(s.totalCancelled);
+      noShow.textContent = String(s.totalNoShow);
+      breakdown.textContent = 'Cancelled by customers: ' + s.cancelledByCustomer + ' · Cancelled by staff: ' + s.cancelledByStaff;
+      var fragment = document.createDocumentFragment();
+      if (!s.perWorker.length) fragment.appendChild(node('p', 'ocs-note', 'No queue registrations today.'));
+      s.perWorker.forEach(function (w) {
+        var row = node('div', 'ocs-worker');
+        row.appendChild(node('strong', '', w.name || 'Barber'));
+        row.appendChild(node('span', '', ' — ' + w.cancelled + ' cancelled'));
+        row.appendChild(node('small', '', 'By customers: ' + w.cancelledByCustomer + ' · By staff: ' + w.cancelledByStaff + ' · No-shows: ' + w.noShow));
+        fragment.appendChild(row);
+      });
+      workers.textContent = ''; workers.appendChild(fragment);
+      panel.setAttribute('data-cancellation-report-date', s.date);
+      state.textContent = 'Updated automatically every 10 seconds while this page is open.';
+      confirmed = true;
+    }
+    var original = DB.getDailyStats, pending = null;
+    DB.getDailyStats = function () {
+      if (pending) return pending;
+      var timer;
+      var request = Promise.resolve().then(function () { return original.call(DB); });
+      var deadline = new Promise(function (_, reject) {
+        timer = setTimeout(function () { reject(new Error('Statistics request timed out.')); }, 12000);
+      });
+      pending = Promise.race([request, deadline]).then(function (s) {
+        paint(s); return s;
+      }).catch(function (error) {
+        state.textContent = confirmed
+          ? 'Connection interrupted — figures above are the last confirmed totals, not live. Retrying automatically.'
+          : 'Could not load cancellation totals. Retrying automatically; no bookings have changed.';
+        throw error;
+      }).finally(function () { clearTimeout(timer); pending = null; });
+      return pending;
+    };
+    function refresh() {
+      if (document.hidden) return;
+      if (typeof window.loadStats === 'function') window.loadStats();
+    }
+    refresh();
+    setInterval(refresh, 10000);
+    window.addEventListener('online', refresh);
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    window.addEventListener('offline', function () {
+      state.textContent = 'Offline — these figures are not live. They will refresh when your connection returns.';
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setupCancellationStats);
+  else setupCancellationStats();
+})();
