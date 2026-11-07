@@ -31,7 +31,7 @@
       }).catch(function () {});
     }
     if (element('step-pick')) {
-      loadScript('bossman-recovery-loader', 'recovery-loader.js?v=20261017b');
+      loadScript('bossman-recovery-loader', 'recovery-loader.js?v=20261107-phone');
       loadScript('bossman-turn-alerts', 'turn-alerts.js?v=20261017a');
       loadScript('bossman-switch-barber', 'switch-barber.js?v=20261017a');
     }

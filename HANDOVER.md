@@ -136,7 +136,7 @@ The QR page also requests a browser screen wake lock when supported, with iPad A
 
 ### Recovering customers after a missing-queue incident
 
-If customer records were deleted, **Find My Queue cannot recreate them**. Ask the waiting customers and staff to confirm the original order before adding anyone again. Each worker can use **+ Quick Service** on their private dashboard, enter the customer's actual name and phone number and the expected service duration, then choose **End of queue**. Add customers in the confirmed order. This creates replacement queue records; it does not restore the deleted records or prove their original positions. Customers can then use **Find My Queue** with the same name and phone number to reopen their replacement entry.
+If customer records were deleted, **Find My Queue cannot recreate them**. Ask the waiting customers and staff to confirm the original order before adding anyone again. Each worker can use **+ Quick Service** on their private dashboard, enter the customer's actual name and phone number and the expected service duration, then choose **End of queue**. Add customers in the confirmed order. This creates replacement queue records; it does not restore the deleted records or prove their original positions. Customers can then use **Find My Queue** with the same phone number to reopen their replacement entry. No name is needed for recovery. If the number is shared by several customers, select the matching customer and barber from the choices.
 
 ---
 

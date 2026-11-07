@@ -234,7 +234,7 @@
           '<input id="quick-service-name" type="text" autocomplete="name" maxlength="80" required>' +
           '<label for="quick-service-phone">Phone number</label>' +
           '<input id="quick-service-phone" type="tel" autocomplete="tel" inputmode="tel" maxlength="20" placeholder="e.g. 01112345678" required>' +
-          '<p class="quick-service-note">The customer can later scan the shop QR and use Find My Queue with this same name and phone number.</p>' +
+          '<p class="quick-service-note">The customer can later scan the shop QR and use Find My Queue with this same phone number. No name is needed.</p>' +
           '<label>Service time</label>' +
           '<div class="quick-duration-presets">' +
             '<button type="button" data-minutes="5">5 min</button>' +

@@ -7,6 +7,8 @@
     error.dataset.recoveryObserved = "true";
 
     function check() {
+      var joinForm = document.getElementById("step-form");
+      if (error.classList.contains("hidden") || (joinForm && joinForm.classList.contains("hidden"))) return;
       var message = error.textContent || "";
       if (!/already in a queue|joined recently/i.test(message)) return;
       if (typeof window.openBossmanQueueRecovery !== "function") return;
@@ -31,10 +33,7 @@
   function loadRecoveryWhenAvailable() {
     if (!window.sbRpc || !document.getElementById("step-pick")) return;
 
-    sbRpc("recover_queue", {
-      p_customer_name: "",
-      p_phone: ""
-    }).then(function() {
+    sbRpc("recover_queue_by_phone", { p_phone: "" }).then(function() {
       var existing = document.getElementById("bossman-recovery-script");
       if (existing) {
         installDuplicateJoinHelper();
@@ -43,7 +42,7 @@
 
       var script = document.createElement("script");
       script.id = "bossman-recovery-script";
-      script.src = "recovery.js?v=20261106a";
+      script.src = "recovery.js?v=20261107-phone";
       script.onload = installDuplicateJoinHelper;
       document.body.appendChild(script);
     }).catch(function() {});
